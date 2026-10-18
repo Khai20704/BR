@@ -1,11 +1,16 @@
 import type { ReactNode } from 'react'
 import {
+  Activity,
   AlertCircle,
   ArrowUpRight,
   FlaskConical,
+  Gauge,
   LoaderCircle,
+  ShieldCheck,
   Unplug,
 } from 'lucide-react'
+import type { Provenance } from '@/core/provenance/Provenance'
+import type { PlanStatus } from '@/core/preview/plan-types'
 export function Badge({
   children,
   tone = 'neutral',
@@ -154,13 +159,42 @@ export function Notice({ children }: { children: ReactNode }) {
     </div>
   )
 }
-export function Status({
-  value,
-}: {
-  value: 'NEED_MORE_DATA' | 'NO_FEASIBLE_PLAN' | 'NOT_VALIDATED'
-}) {
+export function Status({ value }: { value: PlanStatus }) {
+  if (value === 'VALIDATED')
+    return (
+      <Badge tone="green">
+        <ShieldCheck size={11} /> VALIDATED
+      </Badge>
+    )
   return (
     <Badge tone={value === 'NO_FEASIBLE_PLAN' ? 'red' : 'amber'}>{value}</Badge>
+  )
+}
+
+/**
+ * States where a value came from. A model prediction is never shown as a
+ * measurement, and a fixture is never shown as anything but a fixture.
+ */
+export function ProvenanceTag({ provenance }: { provenance: Provenance }) {
+  const tone =
+    provenance.kind === 'MEASURED'
+      ? 'green'
+      : provenance.kind === 'MODEL_PREDICTION'
+        ? 'neutral'
+        : 'amber'
+  const Icon =
+    provenance.kind === 'MEASURED'
+      ? Gauge
+      : provenance.kind === 'MODEL_PREDICTION'
+        ? Activity
+        : FlaskConical
+  return (
+    <span title={provenance.detail}>
+      <Badge tone={tone}>
+        <Icon size={11} />
+        {provenance.label}
+      </Badge>
+    </span>
   )
 }
 export function TextLink({ children }: { children: ReactNode }) {

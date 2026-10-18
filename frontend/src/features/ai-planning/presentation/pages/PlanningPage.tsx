@@ -1,124 +1,150 @@
-import { ArrowRight, CircleDashed, ShieldCheck } from 'lucide-react'
-import { useState } from 'react'
+import { CircleDashed, CheckCircle2, ShieldCheck } from 'lucide-react'
 import type { PlanningPreview } from '../../domain/models/PlanningPreview'
+import type { ScenarioDraft } from '@/core/scenario/scenario-draft'
+import { useScenario } from '@/core/scenario/ScenarioProvider'
 import { usePreviewQuery } from '@/shared/hooks/usePreviewQuery'
+import { formatMeasurement } from '@/core/preview/format'
 import {
+  Badge,
   EmptyState,
   Notice,
   PageHeader,
   Panel,
-  PreviewLabel,
+  ProvenanceTag,
   RequestState,
   Status,
 } from '@/shared/components/ui'
+
+function VerificationBadge({
+  verification,
+}: {
+  verification: PlanningPreview['narrative']['verification']
+}) {
+  if (verification === 'LIVE_GEMINI_VERIFIED')
+    return <Badge tone="green">LIVE_GEMINI_VERIFIED</Badge>
+  if (verification === 'LIVE_GEMINI_NOT_VERIFIED')
+    return <Badge tone="amber">LIVE_GEMINI_NOT_VERIFIED</Badge>
+  return <Badge>GEMINI_DISABLED · DETERMINISTIC NARRATION</Badge>
+}
+
 export function PlanningPage({
   load,
 }: {
-  load: () => Promise<PlanningPreview>
+  load: (draft: ScenarioDraft) => Promise<PlanningPreview>
 }) {
-  const q = usePreviewQuery('planning', load)
-  const [previewState, setPreviewState] = useState<
-    'NEED_MORE_DATA' | 'NO_FEASIBLE_PLAN' | 'NOT_VALIDATED'
-  >('NEED_MORE_DATA')
+  const { draft, revision } = useScenario()
+  const q = usePreviewQuery('planning', () => load(draft), revision)
+  const data = q.data
   return (
     <>
       <PageHeader
         eyebrow="DECISION INTELLIGENCE / PLANNING"
         title="AI planning"
         description="From thermal context to a plan you can inspect."
-        action={<Status value="NEED_MORE_DATA" />}
+        action={
+          data ? (
+            <Status value={data.status} />
+          ) : (
+            <Status value="NEED_MORE_DATA" />
+          )
+        }
       />
       <RequestState
         pending={q.isPending}
         error={q.error}
         retry={() => void q.refetch()}
       />
-      <Notice>
-        No AI request, optimization, or tool execution has occurred. These are
-        interface examples only.
-      </Notice>
-      {q.data && (
+      {data ? (
+        <Notice>
+          Engine output, not an experimental result. {data.validation.summary}
+        </Notice>
+      ) : (
+        <Notice>
+          No plan has been calculated. This page never substitutes sample values
+          for a missing response.
+        </Notice>
+      )}
+      {data && (
         <Panel
           className="section-gap"
-          title="Decision state preview"
-          subtitle="PREVIEW DATA · test interface states, not engineering conclusions"
+          title="Decision state"
+          subtitle="Plan status and its independent validation"
+          action={<ProvenanceTag provenance={data.provenance} />}
         >
-          <div className="field">
-            <label htmlFor="planning-state">Preview a response state</label>
-            <select
-              id="planning-state"
-              value={previewState}
-              onChange={(event) => {
-                const value = event.target.value
-                if (
-                  value === 'NEED_MORE_DATA' ||
-                  value === 'NO_FEASIBLE_PLAN' ||
-                  value === 'NOT_VALIDATED'
-                )
-                  setPreviewState(value)
-              }}
-            >
-              <option value="NEED_MORE_DATA">NEED_MORE_DATA</option>
-              <option value="NO_FEASIBLE_PLAN">NO_FEASIBLE_PLAN</option>
-              <option value="NOT_VALIDATED">NOT_VALIDATED</option>
-            </select>
+          <div className="info-row">
+            <span>Validation</span>
+            <Status value={data.validation.status} />
           </div>
-          <div className="section-gap">
-            <Status value={previewState} />
+          <div className="info-row">
+            <span>Predicted final moisture</span>
+            <strong>
+              {formatMeasurement(data.finalMoisturePercentWb, '% wb', 2)}
+            </strong>
           </div>
-          <p className="body-copy">
-            {previewState === 'NO_FEASIBLE_PLAN'
-              ? 'Example response: no candidate satisfies the supplied constraints. Review inputs before requesting another plan. This is not an evaluated result.'
-              : previewState === 'NOT_VALIDATED'
-                ? 'Example response: a candidate must pass backend validation before use. No validation has occurred.'
-                : 'Example response: provide measured thermal data, material properties, and operating constraints.'}
-          </p>
+          <div className="info-row">
+            <span>Predicted energy</span>
+            <strong>{formatMeasurement(data.energyKwh, 'kWh', 3)}</strong>
+          </div>
+          {data.validation.checks.length > 0 && (
+            <ul className="checklist section-gap">
+              {data.validation.checks.map((check) => (
+                <li key={check.code}>
+                  {check.passed ? 'PASS' : 'FAIL'} · {check.code} —{' '}
+                  {check.detail}
+                </li>
+              ))}
+            </ul>
+          )}
         </Panel>
       )}
       <div className="plan-grid section-gap">
-        {q.data ? (
-          q.data.options.map((option, i) => (
+        {data && data.options.length > 0 ? (
+          data.options.map((option, i) => (
             <Panel
-              key={option.name}
+              key={option.name + i}
               title={option.name}
-              subtitle={'SCENARIO TYPE 0' + (i + 1)}
-              action={<ArrowRight size={17} />}
+              subtitle={'PHASE 0' + (i + 1)}
             >
-              <PreviewLabel />
               <p className="body-copy">{option.description}</p>
-              <div className="info-row">
-                <span>Estimated completion</span>
-                <strong>·</strong>
-              </div>
-              <div className="info-row">
-                <span>Validated outcome</span>
-                <strong>None</strong>
-              </div>
-              <Status value="NOT_VALIDATED" />
+              <Status value={data.validation.status} />
             </Panel>
           ))
         ) : (
           <Panel title="Plan options">
-            <EmptyState />
+            <EmptyState title="No plan">
+              No optimizer output is available for this scenario.
+            </EmptyState>
           </Panel>
         )}
       </div>
       <div className="two-column section-gap">
         <Panel
           title="Tool execution timeline"
-          subtitle="PREVIEW DATA · workflow outline, not an execution trace"
+          subtitle="Recorded tool calls · empty when no tool ran"
+          action={
+            <VerificationBadge
+              verification={data?.narrative.verification ?? 'GEMINI_DISABLED'}
+            />
+          }
         >
-          {q.data ? (
+          {data && data.steps.length > 0 ? (
             <ol className="timeline">
-              {q.data.steps.map((step, i) => (
-                <li key={step}>
+              {data.steps.map((step, i) => (
+                <li key={step.label + i}>
                   <span className="timeline-marker">
-                    <CircleDashed size={16} />
+                    {step.executed ? (
+                      <CheckCircle2 size={16} />
+                    ) : (
+                      <CircleDashed size={16} />
+                    )}
                   </span>
                   <div>
-                    <span className="micro">STEP 0{i + 1} · NOT EXECUTED</span>
-                    <h3>{step}</h3>
-                    <p>No invocation, duration, or result recorded.</p>
+                    <span className="micro">
+                      STEP 0{i + 1} ·{' '}
+                      {step.executed ? 'EXECUTED' : 'NOT EXECUTED'}
+                    </span>
+                    <h3>{step.label}</h3>
+                    <p>{step.detail}</p>
                   </div>
                 </li>
               ))}
@@ -130,15 +156,22 @@ export function PlanningPage({
         <div className="stack">
           <Panel title="Reasoning summary">
             <p className="body-copy">
-              No reasoning has been generated. Future summaries will explain the
-              inputs, constraints, and trade-offs behind a backend-generated
-              plan.
+              {data?.narrative.text ??
+                'No reasoning has been generated for this workspace.'}
             </p>
+            {data && (
+              <div className="info-row">
+                <span>Narration provider</span>
+                <strong>{data.narrative.provider}</strong>
+              </div>
+            )}
           </Panel>
           <Panel title="Safety validation" action={<ShieldCheck size={19} />}>
-            <Status value="NOT_VALIDATED" />
+            <Status value={data?.validation.status ?? 'NOT_VALIDATED'} />
             <p className="body-copy">
-              No validator is connected. No plan is approved for operation.
+              {data
+                ? 'The validator re-integrated the schedule independently of the optimizer. Validation is not an experimental proof.'
+                : 'No validator result is available. No plan is approved for operation.'}
             </p>
           </Panel>
         </div>

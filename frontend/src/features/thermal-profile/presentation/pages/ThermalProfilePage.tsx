@@ -1,30 +1,37 @@
+import { useScenario } from '@/core/scenario/ScenarioProvider'
+import type { ScenarioDraft } from '@/core/scenario/scenario-draft'
 import { useState } from 'react'
 import { Activity, Thermometer, Waves } from 'lucide-react'
 import type { ThermalPreview } from '../../domain/models/ThermalPreview'
 import { usePreviewQuery } from '@/shared/hooks/usePreviewQuery'
 import { PreviewChart } from '@/shared/components/PreviewChart'
+import { formatRange } from '@/core/preview/format'
 import {
   EmptyState,
   Notice,
   PageHeader,
   Panel,
-  PreviewLabel,
+  ProvenanceTag,
   RequestState,
   Stat,
 } from '@/shared/components/ui'
+
 export function ThermalProfilePage({
   load,
 }: {
-  load: () => Promise<ThermalPreview>
+  load: (draft: ScenarioDraft) => Promise<ThermalPreview>
 }) {
-  const query = usePreviewQuery('thermal', load)
+  const { draft, revision } = useScenario()
+  const query = usePreviewQuery('thermal', () => load(draft), revision)
   const [view, setView] = useState<'temperature' | 'heat'>('temperature')
+  const data = query.data
   return (
     <>
       <PageHeader
         eyebrow="THERMAL INTELLIGENCE / SOURCE"
         title="Thermal profile"
         description="Understand the shape of available heat across your operating window."
+        action={data ? <ProvenanceTag provenance={data.provenance} /> : undefined}
       />
       <RequestState
         pending={query.isPending}
@@ -34,22 +41,22 @@ export function ThermalProfilePage({
       <div className="stats-grid three">
         <Stat
           label="Source temperature"
-          value={query.data ? '34–48' : '—'}
+          value={data ? formatRange(data.temperatureRange) : '—'}
           unit="°C"
           detail={
-            query.data
-              ? 'Synthetic range · not measured'
-              : 'No measured data connected'
+            data
+              ? `${data.sourceName} · not measured`
+              : 'No source profile connected'
           }
           icon={<Thermometer />}
         />
         <Stat
           label="Heat availability"
-          value={query.data ? '1.2–3.1' : '—'}
+          value={data ? formatRange(data.heatRange, 1) : '—'}
           unit="kW"
           detail={
-            query.data
-              ? 'Illustrative profile only'
+            data
+              ? 'Available heat per window sample'
               : 'Awaiting a source profile'
           }
           icon={<Waves />}
@@ -57,13 +64,19 @@ export function ThermalProfilePage({
         <Stat
           label="Uncertainty"
           value="Unknown"
-          detail="Calibration & observations required"
+          detail={
+            data ? data.uncertainty : 'No uncertainty model is available'
+          }
           icon={<Activity />}
         />
       </div>
       <Panel
         title="Source profile"
-        subtitle="Operating window · 08:00–16:00"
+        subtitle={
+          data
+            ? `${data.sourceName} · ${data.points.length} samples, elapsed time`
+            : 'Operating window'
+        }
         action={
           <div className="segmented" aria-label="Chart metric">
             <button
@@ -81,9 +94,9 @@ export function ThermalProfilePage({
           </div>
         }
       >
-        {query.data ? (
+        {data ? (
           <PreviewChart
-            points={query.data.points.map((p) => ({
+            points={data.points.map((p) => ({
               time: p.time,
               value: view === 'temperature' ? p.temperature : p.heat,
             }))}
@@ -98,15 +111,16 @@ export function ThermalProfilePage({
       </Panel>
       <div className="equal-columns section-gap">
         <Panel title="Data provenance">
-          <PreviewLabel />
+          {data ? <ProvenanceTag provenance={data.provenance} /> : <EmptyState />}
           <p className="body-copy">
-            This fixed curve is an interface fixture. It is not a measurement,
-            forecast, or estimate of recoverable heat.
+            {data
+              ? data.provenance.detail
+              : 'No source of these values is available.'}
           </p>
         </Panel>
         <Panel title="Uncertainty & coverage">
           <p className="body-copy">
-            {query.data?.uncertainty ?? 'No uncertainty model is available.'}
+            {data?.uncertainty ?? 'No uncertainty model is available.'}
           </p>
           <Notice>
             No confidence band is implied. A verified profile is required for

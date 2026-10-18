@@ -1,36 +1,82 @@
 import { z } from 'zod'
 import { BarChart3 } from 'lucide-react'
 import type { BenchmarkPreview } from '../../domain/models/BenchmarkPreview'
+import type { ScenarioDraft } from '@/core/scenario/scenario-draft'
+import { useScenario } from '@/core/scenario/ScenarioProvider'
 import { usePreviewQuery } from '@/shared/hooks/usePreviewQuery'
-import { useDraftReview } from '@/shared/hooks/useDraftReview'
 import { DraftForm } from '@/shared/components/DraftForm'
+import { formatMeasurement } from '@/core/preview/format'
 import {
   Notice,
   PageHeader,
   Panel,
-  PreviewLabel,
+  ProvenanceTag,
   RequestState,
   Status,
 } from '@/shared/components/ui'
+
 const schema = z.object({
   scenario: z.string().trim().min(2, 'Name the shared scenario.'),
   mass: z.coerce.number().positive('Enter a positive mass.'),
   window: z.coerce.number().positive('Enter a positive duration.'),
 })
+
+const METRICS: {
+  label: string
+  render: (data: BenchmarkPreview, methodIndex: number) => string
+}[] = [
+  {
+    label: 'Drying duration (h)',
+    render: (data, i) => {
+      const minutes = data.methods[i]?.durationMinutes
+      return minutes === null || minutes === undefined
+        ? '·'
+        : (minutes / 60).toFixed(2)
+    },
+  },
+  {
+    label: 'Energy consumed (kWh)',
+    render: (data, i) =>
+      formatMeasurement(data.methods[i]?.energyKwh ?? null, '', 3).trim(),
+  },
+  {
+    label: 'Final moisture (% wet-basis)',
+    render: (data, i) =>
+      formatMeasurement(
+        data.methods[i]?.finalMoisturePercentWb ?? null,
+        '',
+        2,
+      ).trim(),
+  },
+]
+
 export function BenchmarkPage({
   load,
 }: {
-  load: () => Promise<BenchmarkPreview>
+  load: (draft: ScenarioDraft) => Promise<BenchmarkPreview>
 }) {
-  const q = usePreviewQuery('benchmark', load)
-  const { review } = useDraftReview()
+  const { draft, revision, applyBatch } = useScenario()
+  const q = usePreviewQuery('benchmark', () => load(draft), revision)
+  const data = q.data
+
+  // Reviewing the shared scenario sends it to the store, so the comparison is
+  // recomputed for the entered mass and window rather than the demo defaults.
+  async function review(values: Record<string, unknown>) {
+    const parsed = values as { mass: number; window: number }
+    await applyBatch({
+      massKg: parsed.mass,
+      initialMoisturePercentWb: draft.initialMoisturePercentWb,
+      targetMoisturePercentWb: draft.targetMoisturePercentWb,
+      maxDurationMinutes: Math.max(1, Math.round(parsed.window * 60)),
+    })
+  }
   return (
     <>
       <PageHeader
         eyebrow="DECISION INTELLIGENCE / COMPARISON"
         title="Benchmark"
         description="One scenario. Three approaches. An honest comparison."
-        action={<BarChart3 size={23} />}
+        action={data ? <ProvenanceTag provenance={data.provenance} /> : <BarChart3 size={23} />}
       />
       <RequestState
         pending={q.isPending}
@@ -39,7 +85,7 @@ export function BenchmarkPage({
       />
       <Panel
         title="Common scenario"
-        subtitle="Shared inputs for all methods · local draft only"
+        subtitle="Shared inputs for all methods · sent to the backend"
       >
         <DraftForm
           schema={schema}
@@ -71,8 +117,12 @@ export function BenchmarkPage({
       <Panel
         className="section-gap"
         title="Method comparison"
-        subtitle="No benchmark has run. Metrics are intentionally unavailable."
-        action={q.data ? <PreviewLabel /> : <Status value="NEED_MORE_DATA" />}
+        subtitle={
+          data
+            ? `Scenario ${data.scenarioId} · ${data.modelVersion} · shared engine`
+            : 'No benchmark has run. Metrics are intentionally unavailable.'
+        }
+        action={data ? <ProvenanceTag provenance={data.provenance} /> : <Status value="NEED_MORE_DATA" />}
       >
         <div className="table-scroll">
           <table className="benchmark-table">
@@ -80,7 +130,7 @@ export function BenchmarkPage({
               <tr>
                 <th>Evaluation metric</th>
                 {(
-                  q.data?.methods ?? [
+                  data?.methods.map((m) => m.method) ?? [
                     'Fixed schedule',
                     'Conventional adaptive',
                     'Br AI',
@@ -94,38 +144,34 @@ export function BenchmarkPage({
               </tr>
             </thead>
             <tbody>
-              {[
-                'Drying duration (h)',
-                'Energy consumed (kWh)',
-                'Final moisture (% wet-basis)',
-                'Constraint violations (count)',
-              ].map((metric) => (
-                <tr key={metric}>
-                  <th>{metric}</th>
-                  <td>·</td>
-                  <td>·</td>
-                  <td>·</td>
+              {METRICS.map((metric) => (
+                <tr key={metric.label}>
+                  <th>{metric.label}</th>
+                  {[0, 1, 2].map((index) => (
+                    <td key={index}>
+                      {data ? metric.render(data, index) : '·'}
+                    </td>
+                  ))}
                 </tr>
               ))}
               <tr>
                 <th>Validation state</th>
-                <td>
-                  <Status value="NOT_VALIDATED" />
-                </td>
-                <td>
-                  <Status value="NOT_VALIDATED" />
-                </td>
-                <td>
-                  <Status value="NOT_VALIDATED" />
-                </td>
+                {[0, 1, 2].map((index) => (
+                  <td key={index}>
+                    <Status value={data?.methods[index]?.status ?? 'NOT_VALIDATED'} />
+                  </td>
+                ))}
               </tr>
             </tbody>
           </table>
         </div>
-        <Notice>
-          There is no evidence of savings or performance improvement yet.
-          Comparable backend runs and validated metrics are required.
-        </Notice>
+        {data && data.notes.length > 0 ? (
+          <Notice>{data.notes.join(' ')}</Notice>
+        ) : (
+          <Notice>
+            There is no evidence of savings or performance improvement yet.
+          </Notice>
+        )}
       </Panel>
     </>
   )

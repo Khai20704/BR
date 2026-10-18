@@ -26,7 +26,7 @@ export function toApiError(error: unknown): ApiError {
 export function createHttpClient(baseURL: string | undefined) {
   const client = axios.create({
     baseURL,
-    timeout: 15_000,
+    timeout: 120_000,
     headers: { Accept: 'application/json' },
   })
   client.interceptors.request.use((config) => {

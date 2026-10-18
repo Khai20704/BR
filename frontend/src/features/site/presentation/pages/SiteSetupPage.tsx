@@ -1,8 +1,19 @@
 import { Building2, Radio, Thermometer } from 'lucide-react'
 import { z } from 'zod'
 import { DraftForm } from '@/shared/components/DraftForm'
-import { Badge, Notice, PageHeader, Panel } from '@/shared/components/ui'
-import { useDraftReview } from '@/shared/hooks/useDraftReview'
+import {
+  Badge,
+  Notice,
+  PageHeader,
+  Panel,
+  ProvenanceTag,
+  RequestState,
+} from '@/shared/components/ui'
+import { useScenario } from '@/core/scenario/ScenarioProvider'
+import { usePreviewQuery } from '@/shared/hooks/usePreviewQuery'
+import type { ThermalPreview } from '@/features/thermal-profile/domain/models/ThermalPreview'
+import { formatRange } from '@/core/preview/format'
+
 const positive = z.coerce.number().positive('Enter a value greater than zero.')
 const schema = z.object({
   name: z.string().trim().min(2, 'Enter at least 2 characters.'),
@@ -15,15 +26,41 @@ const schema = z.object({
     'Measured · verification pending',
   ]),
 })
-export function SiteSetupPage() {
-  const { review } = useDraftReview()
+
+export function SiteSetupPage({
+  loadSource,
+}: {
+  loadSource: (draft: import('@/core/scenario/scenario-draft').ScenarioDraft) => Promise<ThermalPreview>
+}) {
+  const { draft, revision, applySource, applySite, site } = useScenario()
+  const source = usePreviewQuery('site-source', () => loadSource(draft), revision)
+  const data = source.data
   return (
     <>
       <PageHeader
         eyebrow="WORKSPACE / CONFIGURATION"
         title="Site setup"
         description="Define the source. Understand the heat you have."
+        action={data ? <ProvenanceTag provenance={data.provenance} /> : undefined}
       />
+      <RequestState
+        pending={source.isPending}
+        error={source.error}
+        retry={() => void source.refetch()}
+      />
+      <Panel title="Thermal scenario" subtitle="MANUAL INPUT / saved to your private workspace">
+        <DraftForm
+          schema={z.object({ temperature: z.coerce.number().min(20).max(70), heat: z.coerce.number().min(0).max(10000) })}
+          initialValues={{ temperature: String(draft.sourceTemperatureC ?? 42), heat: String(draft.availableHeatKw ?? 2) }}
+          fields={[
+            { name: 'temperature', label: 'Scenario source temperature', unit: '°C', type: 'number' },
+            { name: 'heat', label: 'Recoverable heat', unit: 'kW', type: 'number' },
+          ]}
+          onReview={async (values) => applySource(Number(values.temperature), Number(values.heat))}
+          footerNote="Applies constant temperature and heat across the backend source window"
+          savedMessage="Source saved for signed-in users and applied to engine requests. Not a verified measurement."
+        />
+      </Panel>
       <div className="two-column">
         <Panel
           title="Site & equipment"
@@ -32,14 +69,17 @@ export function SiteSetupPage() {
         >
           <DraftForm
             schema={schema}
-            onReview={review}
+            onReview={applySite}
+            onAutosave={applySite}
+            footerNote="Validated edits autosave after a pause; Save now to retry"
+            savedMessage="Site saved to your private workspace."
             initialValues={{
-              name: '',
-              location: '',
-              acModel: '',
-              capacity: '',
-              source: 'AC condenser waste heat',
-              provenance: 'Synthetic / UI preview',
+              name: site?.name ?? '',
+              location: site?.location ?? '',
+              acModel: site?.acModel ?? '',
+              capacity: site ? String(site.capacity) : '',
+              source: site?.source ?? 'AC condenser waste heat',
+              provenance: site?.provenance ?? 'Synthetic / UI preview',
             }}
             fields={[
               {
@@ -89,19 +129,48 @@ export function SiteSetupPage() {
           <Panel title="Source integrity" action={<Radio size={18} />}>
             <Badge tone="amber">NO VERIFIED MEASUREMENTS</Badge>
             <p className="body-copy">
-              Measured observations and synthetic scenarios are kept distinct.
-              No connected sensor stream is available.
+              Measured observations and the documented scenario are kept
+              distinct. No connected sensor stream is available. Site name,
+              location and equipment metadata are stored privately; only the
+              active batch and thermal scenario are sent to the engine.
             </p>
+            <div className="info-row">
+              <span>Backend source</span>
+              <span>{data ? `${data.sourceName} (${data.sourceId})` : '—'}</span>
+            </div>
+            <div className="info-row">
+              <span>Source temperature</span>
+              <span>
+                {data && data.temperatureRange
+                  ? `${formatRange(data.temperatureRange)} °C`
+                  : '—'}
+              </span>
+            </div>
+            <div className="info-row">
+              <span>Available heat</span>
+              <span>
+                {data && data.heatRange
+                  ? `${formatRange(data.heatRange, 1)} kW`
+                  : '—'}
+              </span>
+            </div>
+            <div className="info-row">
+              <span>Active batch</span>
+              <span>
+                {draft.massKg} kg · {draft.initialMoisturePercentWb}% to{' '}
+                {draft.targetMoisturePercentWb}% wet basis
+              </span>
+            </div>
+            <div className="info-row">
+              <span>Operating window</span>
+              <span>{draft.maxDurationMinutes} min</span>
+            </div>
             <div className="info-row">
               <span>Sensor connection</span>
               <span>Disconnected</span>
             </div>
             <div className="info-row">
               <span>Calibration</span>
-              <span>Not provided</span>
-            </div>
-            <div className="info-row">
-              <span>Sampling interval</span>
               <span>Not provided</span>
             </div>
           </Panel>

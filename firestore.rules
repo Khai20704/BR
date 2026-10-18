@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function owner(uid) { return request.auth != null && request.auth.uid == uid; }
+  function identityClaim(key) { let value = request.auth.token.get(key, null); return value == null ? '' : value; }
+  function text(s,n) { return s is string && s.size() <= n; }
+  function timestamps(d) { return d.createdAt is timestamp && d.updatedAt == request.time; }
+  function dates() { return request.resource.data.createdAt == resource.data.createdAt; }
+  function validDraft(d) {
+   return d.keys().hasOnly(['batchId','massKg','initialMoisturePercentWb','targetMoisturePercentWb','maxDurationMinutes','minTemperatureC','maxTemperatureC','relativeHumidity','sourceTemperatureC','availableHeatKw'])
+    && text(d.batchId,64) && d.batchId.size()>0
+    && d.massKg is number && d.massKg>0 && d.massKg<=100000
+    && d.initialMoisturePercentWb is number && d.initialMoisturePercentWb>0 && d.initialMoisturePercentWb<100
+    && d.targetMoisturePercentWb is number && d.targetMoisturePercentWb>0 && d.targetMoisturePercentWb<d.initialMoisturePercentWb
+    && d.maxDurationMinutes is int && d.maxDurationMinutes>0 && d.maxDurationMinutes<=10080
+    && d.minTemperatureC is number && d.minTemperatureC>=0
+    && d.maxTemperatureC is number && d.maxTemperatureC>d.minTemperatureC && d.maxTemperatureC<=200
+    && d.relativeHumidity is number && d.relativeHumidity>=0 && d.relativeHumidity<=1
+    && (!('sourceTemperatureC' in d) || (d.sourceTemperatureC is number && d.sourceTemperatureC>=20 && d.sourceTemperatureC<=70))
+    && (!('availableHeatKw' in d) || (d.availableHeatKw is number && d.availableHeatKw>=0 && d.availableHeatKw<=10000));
+  }
+  function site(d) {
+   return text(d.name,120) && d.name.size()>=2 && text(d.location,200) && d.location.size()>=2
+    && text(d.acModel,120) && d.acModel.size()>=2 && d.capacity is number && d.capacity>0 && d.capacity<=100000
+    && text(d.source,120) && d.source.size()>0
+    && d.provenance in ['Synthetic / UI preview','Measured \u00b7 verification pending'];
+  }
+  match /users/{uid} {
+   allow get: if owner(uid);
+   allow create: if owner(uid) && profile(request.resource.data) && request.resource.data.createdAt==request.time;
+   allow update: if owner(uid) && profile(request.resource.data) && dates();
+   function profile(d) { return d.keys().hasOnly(['displayName','email','photoURL','createdAt','updatedAt']) && text(d.displayName,120) && text(d.email,254) && text(d.photoURL,2048) && d.email == identityClaim('email') && d.displayName == identityClaim('name') && d.photoURL == identityClaim('picture') && timestamps(d); }
+   match /sites/{id} {
+    allow read: if owner(uid);
+    allow create: if owner(uid) && validSite(request.resource.data) && request.resource.data.createdAt==request.time;
+    allow update: if owner(uid) && validSite(request.resource.data) && dates();
+    function validSite(d) { return d.keys().hasOnly(['name','location','acModel','capacity','source','provenance','createdAt','updatedAt']) && site(d) && timestamps(d); }
+   }
+   match /batches/{id} {
+    allow read: if owner(uid);
+    allow create: if owner(uid) && batch(request.resource.data) && request.resource.data.createdAt==request.time;
+    allow update: if owner(uid) && batch(request.resource.data) && dates();
+    function batch(d) { return d.keys().hasOnly(['siteId','materialType','wetMassKg','initialMoisture','targetMoisture','maxDurationMin','createdAt','updatedAt'])
+     && d.siteId=='active' && d.materialType=='spent-coffee-grounds'
+     && d.wetMassKg is number && d.wetMassKg>0 && d.wetMassKg<=100000
+     && d.initialMoisture is number && d.initialMoisture>0 && d.initialMoisture<100
+     && d.targetMoisture is number && d.targetMoisture>0 && d.targetMoisture<d.initialMoisture
+     && d.maxDurationMin is int && d.maxDurationMin>0 && d.maxDurationMin<=10080 && timestamps(d); }
+   }
+   match /thermal_scenarios/{id} {
+    allow read: if owner(uid);
+    allow create: if owner(uid) && scenario(request.resource.data) && request.resource.data.version==1 && request.resource.data.createdAt==request.time;
+    allow update: if owner(uid) && scenario(request.resource.data) && dates() && request.resource.data.version==resource.data.version+1;
+    function scenario(d) { return d.keys().hasOnly(['draft','site','siteId','dataProvenance','version','createdAt','updatedAt'])
+     && validDraft(d.draft) && (d.site==null || (d.site.keys().hasOnly(['name','location','acModel','capacity','source','provenance']) && site(d.site)))
+     && d.siteId=='active' && d.dataProvenance in ['SYNTHETIC','MANUAL_UNVERIFIED'] && d.version is int && timestamps(d); }
+   }
+   match /{kind}/{id} {
+    function history() { return kind in ['simulations','ai_plans','replanning_runs','benchmarks']; }
+    allow get: if owner(uid) && history();
+    allow list: if owner(uid) && history() && request.query.limit<=20;
+    allow create: if owner(uid) && history() && validRun(request.resource.data);
+    allow delete: if owner(uid) && history();
+    // No updates: input snapshots and calculated results are immutable.
+    function validRun(d) { return d.keys().hasOnly(['inputSnapshot','result','modelVersion','modelName','dataProvenance','siteId','batchId','scenarioId','createdAt'])
+     && text(d.inputSnapshot,180000) && text(d.result,180000)
+     && d.inputSnapshot.size()>1 && d.result.size()>1
+     && text(d.modelVersion,120) && text(d.modelName,120)
+     && d.dataProvenance=='MODEL_PREDICTION' && d.siteId=='active' && d.batchId=='active' && d.scenarioId=='active'
+     && d.createdAt==request.time; }
+   }
+  }
+  match /{document=**} { allow read, write: if false; }
+ }
+}

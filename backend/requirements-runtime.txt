@@ -1,0 +1,6 @@
+# Direct runtime versions from the verified Phase 03 environment.
+# Test tools and unused google-adk are intentionally excluded.
+fastapi==0.143.3
+uvicorn==0.54.0
+pydantic==2.14.1
+google-genai==1.75.0

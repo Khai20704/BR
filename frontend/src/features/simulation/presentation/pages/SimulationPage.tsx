@@ -1,27 +1,40 @@
 import type { SimulationPreview } from '../../domain/models/SimulationPreview'
+import type { ScenarioDraft } from '@/core/scenario/scenario-draft'
+import { useScenario } from '@/core/scenario/ScenarioProvider'
 import { usePreviewQuery } from '@/shared/hooks/usePreviewQuery'
 import { PreviewChart } from '@/shared/components/PreviewChart'
+import { formatMeasurement } from '@/core/preview/format'
 import {
   EmptyState,
   Notice,
   PageHeader,
   Panel,
+  ProvenanceTag,
   RequestState,
   Status,
 } from '@/shared/components/ui'
+
 export function SimulationPage({
   load,
 }: {
-  load: () => Promise<SimulationPreview>
+  load: (draft: ScenarioDraft) => Promise<SimulationPreview>
 }) {
-  const q = usePreviewQuery('simulation', load)
+  const { draft, revision } = useScenario()
+  const q = usePreviewQuery('simulation', () => load(draft), revision)
+  const data = q.data
   return (
     <>
       <PageHeader
         eyebrow="THERMAL INTELLIGENCE / SIMULATION"
         title="Thermal digital twin"
         description="Explore the simulation workspace. Engineering validation comes next."
-        action={<Status value="NOT_VALIDATED" />}
+        action={
+          data ? (
+            <ProvenanceTag provenance={data.provenance} />
+          ) : (
+            <Status value="NOT_VALIDATED" />
+          )
+        }
       />
       <RequestState
         pending={q.isPending}
@@ -31,56 +44,90 @@ export function SimulationPage({
       <div className="two-column">
         <Panel
           title="Moisture prediction"
-          subtitle="Illustrative chart layout · no model has run"
+          subtitle={
+            data
+              ? `${data.modelVersion} · ${data.points.length} reported points`
+              : 'No model has run'
+          }
         >
-          {q.data ? (
+          {data ? (
             <PreviewChart
-              points={q.data.points.map((p) => ({
+              points={data.points.map((p) => ({
                 time: p.time,
                 value: p.moisture,
               }))}
-              label="Illustrative moisture"
+              label="Predicted moisture"
               unit="% wet-basis"
             />
           ) : (
             <EmptyState />
           )}
           <Notice>
-            This is a synthetic curve, not a drying prediction. No target
-            achievement is claimed.
+            Engine prediction, not a measurement. Target achievement is checked
+            independently by the backend validator.
           </Notice>
         </Panel>
-        <Panel title="Mass balance" subtitle="Awaiting physics engine">
+        <Panel
+          title="Mass balance"
+          subtitle={data ? 'Computed by the physics engine' : 'No engine run'}
+        >
           <div className="result-value">
-            ·<span>kg water removed</span>
+            {data ? data.waterRemovedKg.toFixed(3) : '·'}
+            <span>kg water removed</span>
           </div>
-          {['Initial dry solids', 'Final wet mass', 'Energy required'].map(
-            (label) => (
-              <div className="info-row" key={label}>
-                <span>{label}</span>
-                <strong>·</strong>
-              </div>
-            ),
-          )}
+          {[
+            {
+              label: 'Final moisture',
+              value: data
+                ? formatMeasurement(data.finalMoisturePercentWb, '% wb', 2)
+                : '·',
+            },
+            {
+              label: 'Duration',
+              value: data ? formatMeasurement(data.durationMinutes, 'min', 0) : '·',
+            },
+            {
+              label: 'Energy consumed',
+              value: data ? formatMeasurement(data.energyKwh, 'kWh', 3) : '·',
+            },
+            {
+              label: 'Latent energy floor',
+              value: data ? formatMeasurement(data.minimumEnergyKwh, 'kWh', 3) : '·',
+            },
+          ].map((row) => (
+            <div className="info-row" key={row.label}>
+              <span>{row.label}</span>
+              <strong>{row.value}</strong>
+            </div>
+          ))}
           <div className="section-gap">
-            <Status value="NOT_VALIDATED" />
+            <Status value={data?.status ?? 'NOT_VALIDATED'} />
           </div>
         </Panel>
       </div>
       <div className="equal-columns section-gap">
         <Panel title="Simulation assumptions">
-          <ul className="checklist">
-            <li>Material properties: not supplied</li>
-            <li>Airflow & humidity: not supplied</li>
-            <li>Heat transfer model: not connected</li>
-            <li>Boundary conditions: not validated</li>
-          </ul>
+          {data && data.notes.length > 0 ? (
+            <ul className="checklist">
+              {data.notes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          ) : (
+            <ul className="checklist">
+              <li>Material properties: not supplied</li>
+              <li>Airflow & humidity: not supplied</li>
+              <li>Heat transfer model: not connected</li>
+              <li>Boundary conditions: not validated</li>
+            </ul>
+          )}
         </Panel>
         <Panel title="Feasibility assessment">
-          <Status value="NEED_MORE_DATA" />
+          <Status value={data?.status ?? 'NEED_MORE_DATA'} />
           <p className="body-copy">
-            A validated material model, measured thermal inputs, and operating
-            constraints are needed before feasibility can be assessed.
+            {data
+              ? 'This trajectory is a model prediction with an independent energy plausibility check. It is not an experimentally validated drying curve.'
+              : 'A material model, thermal inputs and operating constraints are needed before feasibility can be assessed.'}
           </p>
         </Panel>
       </div>

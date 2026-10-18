@@ -9,6 +9,8 @@ import {
   Waves,
   Zap,
 } from 'lucide-react'
+import { useScenario } from '@/core/scenario/ScenarioProvider'
+import { formatRange } from '@/core/preview/format'
 import { Link } from 'react-router'
 import { previewServices, dataMode } from '../preview-services'
 import { usePreviewQuery } from '@/shared/hooks/usePreviewQuery'
@@ -25,7 +27,8 @@ import {
   TextLink,
 } from '@/shared/components/ui'
 export function HomePage() {
-  const q = usePreviewQuery('thermal', previewServices.thermal)
+  const { draft, revision } = useScenario()
+  const q = usePreviewQuery('thermal', () => previewServices.thermal(draft), revision)
   const preview = dataMode === 'fixture'
   return (
     <>
@@ -85,22 +88,22 @@ export function HomePage() {
       <div className="stats-grid">
         <Stat
           label="Thermal source"
-          value={q.data ? '34–48' : '—'}
+          value={q.data ? formatRange(q.data.temperatureRange) : '—'}
           unit="°C"
           detail={
             q.data
-              ? 'SYNTHETIC · source temperature'
+              ? 'SYNTHETIC INPUT / source temperature'
               : 'Awaiting source measurements'
           }
           icon={<Thermometer />}
         />
         <Stat
           label="Available heat"
-          value={q.data ? '1.2–3.1' : '—'}
+          value={q.data ? formatRange(q.data.heatRange, 1) : '—'}
           unit="kW"
           detail={
             q.data
-              ? 'SYNTHETIC · illustrative range'
+              ? 'SYNTHETIC INPUT / not measured'
               : 'No heat profile connected'
           }
           icon={<Zap />}
@@ -114,7 +117,7 @@ export function HomePage() {
         <Stat
           label="Simulation status"
           value="Not run"
-          detail="Physics engine not connected"
+          detail="Open Thermal Digital Twin to compute"
           icon={<FlaskConical />}
         />
       </div>
@@ -180,7 +183,7 @@ export function HomePage() {
               <span className="step-circle">3</span>
               <div>
                 <strong>Explore the digital twin</strong>
-                <small>Awaiting a validated model</small>
+                <small>Deterministic model / not experimentally calibrated</small>
               </div>
               <ArrowUpRight size={16} />
             </Link>
@@ -188,7 +191,7 @@ export function HomePage() {
               <span className="step-circle">4</span>
               <div>
                 <strong>Review a drying plan</strong>
-                <small>No plan generated</small>
+                <small>Open AI Planning to compute</small>
               </div>
               <ArrowUpRight size={16} />
             </Link>
@@ -254,7 +257,7 @@ export function HomePage() {
               <p>
                 {preview
                   ? 'Synthetic chart fixtures available'
-                  : 'Backend integration pending'}
+                  : 'HTTP workspace / session inputs'}
               </p>
               <small>THIS SESSION</small>
             </div>
@@ -262,8 +265,8 @@ export function HomePage() {
           <div className="activity">
             <span className="activity-dot muted-dot" />
             <div>
-              <h3>No engineering runs recorded</h3>
-              <p>Simulation, planning & validation are not connected.</p>
+              <h3>No persistent run history</h3>
+              <p>Engineering runs are available on their respective pages.</p>
               <Status value="NOT_VALIDATED" />
             </div>
           </div>

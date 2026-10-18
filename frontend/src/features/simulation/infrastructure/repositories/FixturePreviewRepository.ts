@@ -1,4 +1,6 @@
 import type { PreviewRepository } from '../../domain/repositories/PreviewRepository'
+import { syntheticProvenance } from '@/core/provenance/Provenance'
+
 // Static UI artwork data, never a physical model or an execution result.
 export function createFixturePreviewRepository(): PreviewRepository {
   return {
@@ -6,7 +8,9 @@ export function createFixturePreviewRepository(): PreviewRepository {
       if (!import.meta.env.DEV)
         throw new Error('Preview fixtures are disabled in production.')
       return {
-        source: 'synthetic',
+        provenance: syntheticProvenance(
+          'Illustrative trajectory. No physics engine produced these values.',
+        ),
         points: [
           { time: '0 h', moisture: 62 },
           { time: '1 h', moisture: 58 },
@@ -17,6 +21,13 @@ export function createFixturePreviewRepository(): PreviewRepository {
           { time: '6 h', moisture: 38 },
         ],
         status: 'NOT_VALIDATED',
+        finalMoisturePercentWb: 38,
+        durationMinutes: 360,
+        waterRemovedKg: 0,
+        energyKwh: 0,
+        minimumEnergyKwh: 0,
+        modelVersion: 'synthetic-preview',
+        notes: ['Synthetic preview: no mass balance or energy was computed.'],
       }
     },
   }

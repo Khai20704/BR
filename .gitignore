@@ -8,3 +8,21 @@ coverage/
 !.env.example
 .DS_Store
 Thumbs.db
+
+# Python and deployment artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.firebase/
+.firebaserc
+!.env.production.example
+*-credentials.json
+*service-account*.json
+*.pem
+*.key
+
+# Local Firebase emulator data and diagnostics
+*-debug.log
+.emulator-data/

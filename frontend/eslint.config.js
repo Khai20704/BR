@@ -23,6 +23,8 @@ const boundaries = {
     return {
       'ImportDeclaration, ExportNamedDeclaration, ExportAllDeclaration'(node) {
         if (!node.source || typeof node.source.value !== 'string') return
+        // Type-only DTO dependencies do not couple runtime layers.
+        if (node.importKind === 'type' || node.exportKind === 'type') return
         const spec = node.source.value
         const internal = spec.startsWith('@/') || spec.startsWith('.')
         const target = internal
@@ -99,6 +101,6 @@ export default tseslint.config(
       'architecture/boundaries': 'error',
     },
   },
-  { files: ['*.js'], languageOptions: { globals: globals.node } },
+  { files: ['**/*.js', '**/*.mjs'], languageOptions: { globals: globals.node } },
   prettier,
 )

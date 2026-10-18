@@ -1,0 +1,11 @@
+**
+!Dockerfile
+!requirements-runtime.txt
+!serve.py
+!app/
+!app/**
+app/**/__pycache__/
+app/**/*.pyc
+app/**/.env*
+app/**/*.pem
+app/**/*.key

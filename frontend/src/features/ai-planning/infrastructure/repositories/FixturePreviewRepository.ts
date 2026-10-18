@@ -1,4 +1,6 @@
 import type { PreviewRepository } from '../../domain/repositories/PreviewRepository'
+import { syntheticProvenance } from '@/core/provenance/Provenance'
+
 // Static UI artwork data, never a physical model or an execution result.
 export function createFixturePreviewRepository(): PreviewRepository {
   return {
@@ -6,7 +8,24 @@ export function createFixturePreviewRepository(): PreviewRepository {
       if (!import.meta.env.DEV)
         throw new Error('Preview fixtures are disabled in production.')
       return {
-        source: 'synthetic',
+        provenance: syntheticProvenance(
+          'Illustrative plan layout. No optimizer, validator or agent ran.',
+        ),
+        status: 'NEED_MORE_DATA',
+        phases: [],
+        rationale: [],
+        validation: {
+          status: 'NEED_MORE_DATA',
+          summary: 'No validation has run.',
+          checks: [],
+        },
+        narrative: {
+          text: 'No reasoning has been generated. This is a synthetic preview.',
+          provider: 'fixture',
+          verification: 'GEMINI_DISABLED',
+          toolCalls: [],
+          toolTrace: [],
+        },
         options: [
           {
             name: 'Heat-following',
@@ -24,13 +43,30 @@ export function createFixturePreviewRepository(): PreviewRepository {
               'Explore a scenario with an explicit uncertainty margin.',
           },
         ],
-        status: 'NEED_MORE_DATA',
         steps: [
-          'Collect scenario inputs',
-          'Request thermal simulation',
-          'Evaluate candidate schedules',
-          'Validate constraints',
+          {
+            label: 'Collect scenario inputs',
+            executed: false,
+            detail: 'No invocation, duration, or result recorded.',
+          },
+          {
+            label: 'Request thermal simulation',
+            executed: false,
+            detail: 'No invocation, duration, or result recorded.',
+          },
+          {
+            label: 'Evaluate candidate schedules',
+            executed: false,
+            detail: 'No invocation, duration, or result recorded.',
+          },
+          {
+            label: 'Validate constraints',
+            executed: false,
+            detail: 'No invocation, duration, or result recorded.',
+          },
         ],
+        finalMoisturePercentWb: null,
+        energyKwh: null,
       }
     },
   }

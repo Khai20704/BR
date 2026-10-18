@@ -1,106 +1,146 @@
-import { expect, test } from '@playwright/test'
-const paths = [
-  '/',
-  '/site',
-  '/batch',
-  '/thermal-profile',
-  '/simulation',
-  '/ai-planning',
-  '/replanning',
-  '/benchmark',
-]
-for (const width of [1440, 390]) {
-  test(
-    'all pages render without overflow at ' + width + 'px',
-    async ({ page }) => {
-      await page.setViewportSize({ width, height: width === 1440 ? 1000 : 844 })
-      const errors: string[] = []
-      page.on('pageerror', (error) => errors.push(error.message))
-      for (const path of paths) {
-        await page.goto(path)
-        await expect(page.locator('h1')).toBeVisible()
-        await expect(page.locator('.provenance-bar')).toContainText(
-          'SYNTHETIC / UI PREVIEW',
-        )
-        if (['/', '/thermal-profile', '/simulation'].includes(path))
-          await expect(page.locator('.recharts-area')).toBeVisible()
-        if (path === '/ai-planning') {
-          await page
-            .getByLabel('Preview a response state')
-            .selectOption('NO_FEASIBLE_PLAN')
-          await expect(
-            page.getByText('NO_FEASIBLE_PLAN', { exact: true }).last(),
-          ).toBeVisible()
-        }
-        const overflow = await page.evaluate(
-          () => document.documentElement.scrollWidth > window.innerWidth,
-        )
-        expect(overflow, 'Page overflow: ' + path).toBe(false)
-        if (path === '/')
-          await page.screenshot({
-            path:
-              '../docs/phase-02-' +
-              (width === 1440 ? 'desktop' : 'mobile') +
-              '.png',
-            fullPage: true,
-          })
-        if (path === '/site' && width === 390)
-          await page.screenshot({
-            path: '../docs/phase-02-mobile-form.png',
-            fullPage: true,
-          })
-      }
-      expect(errors).toEqual([])
-    },
-  )
-}
-test('mobile menu navigates and restores keyboard focus', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/')
-  const open = page.getByRole('button', { name: 'Open menu' })
-  await open.click()
-  await expect(page.getByRole('button', { name: 'Close menu' })).toBeFocused()
-  await page.keyboard.press('Escape')
-  await expect(open).toBeFocused()
-  await open.click()
-  await page.getByRole('link', { name: 'Batch setup', exact: true }).click()
-  await expect(page.locator('h1')).toHaveText('Batch setup')
-  await expect(open).toHaveAttribute('aria-expanded', 'false')
-  await page.getByRole('button', { name: 'Review draft' }).click()
-  await expect(page.getByText('This value is required.')).toHaveCount(4)
-})
-test('replanning is explicit and never claims a computed plan', async ({
-  page,
-}) => {
-  await page.goto('/replanning')
-  await page.getByRole('slider').fill('50')
-  await expect(page.getByText('Awaiting request')).toBeVisible()
-  await page.getByRole('button', { name: 'Replan', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Requesting…' })).toBeDisabled()
-  await expect(page.getByText('MODEL_NOT_CONNECTED')).toBeVisible()
+import { expect, test, type Page } from '@playwright/test'
+const base = 'http://127.0.0.1:5205'
+async function login(page: Page, email: string) {
+  await page.goto(base + '/login')
+  const pending = page.waitForEvent('popup')
+  await page
+    .getByRole('button', { name: 'Continue with Google', exact: true })
+    .click()
+  const popup = await pending
+  const existing = popup.getByText(email, { exact: false })
+  await popup.getByText('Sign-in with Google.com').waitFor()
+  if (await existing.count()) await existing.first().click()
+  else {
+    await popup.getByText('Add new account').click()
+    await popup.locator('#email-input').fill(email)
+    await popup.locator('#display-name-input').fill('Phase05 Tester')
+    await popup
+      .getByRole('button', { name: 'Sign in with Google.com', exact: true })
+      .click()
+  }
   await expect(
-    page.getByText('Preview reviewed for 50 °C.', { exact: false }),
+    page.getByRole('heading', { name: /AI Thermal Engineer/ }),
   ).toBeVisible()
-})
-test('production never falls back to synthetic charts', async ({ page }) => {
-  const requests: string[] = []
-  page.on('request', (request) => requests.push(request.url()))
-  await page.goto('http://127.0.0.1:4173')
-  await expect(page.locator('.provenance-bar')).toContainText(
-    'BACKEND DISCONNECTED',
+}
+async function nav(page: Page, path: string) {
+  await page.locator(`nav a[href="${path}"]`).click()
+}
+test('private workspace restores, records all computations, isolates users and supports history actions', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(120000)
+  const email = `phase05-${Date.now()}@example.test`
+  await login(page, email)
+  await nav(page, '/site')
+  await page.getByLabel('Scenario source temperature').fill('42')
+  await page.getByLabel('Recoverable heat').fill('2')
+  await page.locator('form').first().getByRole('button').click()
+  await expect(
+    page.getByText('Source saved for signed-in users', { exact: false }),
+  ).toBeVisible()
+  await page.getByLabel('Site name', { exact: true }).fill('Saved Roastery')
+  await page.getByLabel('Location', { exact: true }).fill('Bangkok')
+  await page.getByLabel('AC model / asset ID').fill('AC-1')
+  await page.getByLabel('Rated cooling capacity').fill('5')
+  await page.getByRole('button', { name: 'Save now' }).click()
+  await expect(
+    page.getByText('Site saved to your private workspace.'),
+  ).toBeVisible()
+  await nav(page, '/batch')
+  await page.getByLabel('Mass after pressing').fill('10')
+  await page.getByRole('button', { name: 'Review draft' }).click()
+  await expect(
+    page.getByText('Engine returned the water duty.', { exact: false }),
+  ).toBeVisible()
+  await page.reload()
+  await expect(page.getByLabel('Mass after pressing')).toHaveValue('10')
+  await nav(page, '/site')
+  await expect(page.getByLabel('Site name', { exact: true })).toHaveValue(
+    'Saved Roastery',
   )
-  await expect(page.locator('.recharts-area')).toHaveCount(0)
-  await expect(page.getByRole('alert')).toContainText(
-    'No thermal-profile endpoint is configured',
-  )
-  await page.goto('http://127.0.0.1:4173/replanning')
+  await nav(page, '/thermal-profile')
+  await expect(
+    page.getByRole('heading', { name: 'Thermal profile', exact: true }),
+  ).toBeVisible()
+  for (const path of ['/simulation', '/ai-planning', '/benchmark']) {
+    await nav(page, path)
+    await expect(
+      page.getByText('Calculation history saved', { exact: true }),
+    ).toBeVisible()
+  }
+  await nav(page, '/replanning')
+  await page.getByRole('slider').fill('35')
   await page.getByRole('button', { name: 'Replan', exact: true }).click()
-  await expect(page.getByRole('alert')).toContainText('Backend disconnected')
-  expect(requests.some((url) => url.includes('FixturePreviewRepository'))).toBe(
-    false,
-  )
-  await page.screenshot({
-    path: '../docs/phase-02-production.png',
-    fullPage: true,
+  await expect(
+    page.getByText('Replanned for 35', { exact: false }),
+  ).toBeVisible()
+  await nav(page, '/history')
+  for (const kind of [
+    'simulations',
+    'ai_plans',
+    'replanning_runs',
+    'benchmarks',
+  ]) {
+    await page.getByLabel('Record type').selectOption(kind)
+    await page.locator('li button').first().click()
+    await expect(
+      page.getByRole('heading', { name: 'Original input parameters' }),
+    ).toBeVisible()
+    await expect(page.locator('article')).toContainText('thin-layer-1.0')
+  }
+  await page.getByLabel('Record type').selectOption('simulations')
+  await page.locator('li button').first().click()
+  await page.getByRole('button', { name: 'Duplicate scenario' }).click()
+  await expect(page.getByLabel('Mass after pressing')).toHaveValue('10')
+  await page.getByRole('button', { name: 'Open account menu' }).click()
+  await page.getByRole('button', { name: 'Log out' }).click()
+  await expect(
+    page.getByRole('button', { name: 'Continue with Google', exact: true }),
+  ).toBeVisible()
+  await login(page, email)
+  await nav(page, '/history')
+  await expect(page.locator('li button').first()).toBeVisible()
+  const other = await browser.newContext()
+  const second = await other.newPage()
+  await login(second, `other-${Date.now()}@example.test`)
+  await nav(second, '/history')
+  await expect(second.getByText('No saved records yet.')).toBeVisible()
+  await other.close()
+  await page.locator('li button').first().click()
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Delete record', exact: true }).click()
+  await expect(page.getByText('No saved records yet.')).toBeVisible()
+})
+for (const width of [1440, 390])
+  test(`eight protected pages render at ${width}px`, async ({ page }) => {
+    test.setTimeout(90000)
+    await page.setViewportSize({ width, height: 900 })
+    await login(page, `layout-${width}-${Date.now()}@example.test`)
+    for (const path of [
+      '/',
+      '/site',
+      '/batch',
+      '/thermal-profile',
+      '/simulation',
+      '/ai-planning',
+      '/replanning',
+      '/benchmark',
+    ]) {
+      await page.goto(base + path)
+      await expect(page.locator('h1')).toBeVisible()
+      await expect(page.locator('.provenance-bar')).toBeVisible()
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      ).toBe(true)
+    }
   })
+test('unauthenticated deep links redirect to login', async ({ page }) => {
+  await page.goto(base + '/history')
+  await expect(page).toHaveURL(/login/)
+  await expect(
+    page.getByRole('button', { name: 'Continue with Google', exact: true }),
+  ).toBeVisible()
 })

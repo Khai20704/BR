@@ -17,6 +17,8 @@ import {
   Waves,
   X,
 } from 'lucide-react'
+import { AccountMenu } from '../auth/AccountMenu'
+import { WorkspaceStatus } from '../auth/WorkspaceStatus'
 import { dataMode } from '../preview-services'
 import { Badge } from '@/shared/components/ui'
 const groups = [
@@ -24,6 +26,7 @@ const groups = [
     label: 'WORKSPACE',
     items: [
       { to: '/', label: 'Overview', icon: LayoutDashboard },
+      { to: '/history', label: 'History', icon: Boxes },
       { to: '/site', label: 'Site setup', icon: Building2 },
       { to: '/batch', label: 'Batch setup', icon: Boxes },
     ],
@@ -132,7 +135,7 @@ export function AppLayout() {
             <span>
               {dataMode === 'fixture'
                 ? 'Development preview'
-                : 'Disconnected workspace'}
+                : 'Private workspace'}
             </span>
           </div>
           <ChevronDown size={14} />
@@ -172,15 +175,15 @@ export function AppLayout() {
               <Unplug size={16} />
             </span>
             <div>
-              <strong>Backend disconnected</strong>
-              <p>No live engineering runs</p>
+              <strong>Engineering API</strong>
+              <p>Connection checked per request</p>
             </div>
           </div>
           <div className="sidebar-footer">
             <span className="avatar">Br</span>
             <div>
               <strong>Engineering workspace</strong>
-              <small>Phase 02 · UI foundation</small>
+              <small>Private saved workspace</small>
             </div>
             <Command size={14} />
           </div>
@@ -209,10 +212,10 @@ export function AppLayout() {
               ) : (
                 <Unplug size={12} />
               )}{' '}
-              {dataMode === 'fixture' ? 'UI PREVIEW' : 'DISCONNECTED'}
+              {dataMode === 'fixture' ? 'UI PREVIEW' : 'HTTP MODE'}
             </Badge>
             <span className="topbar-divider" />
-            <span className="avatar small">Br</span>
+            <AccountMenu />
           </div>
         </header>
         <main id="main" tabIndex={-1} className="main-content">
@@ -221,13 +224,14 @@ export function AppLayout() {
               <FlaskConical size={14} />
               {dataMode === 'fixture'
                 ? 'SYNTHETIC / UI PREVIEW · All displayed curves are illustrative. No live execution.'
-                : 'BACKEND DISCONNECTED · No live data, simulations, or validated plans.'}
+                : 'MODEL PREDICTIONS / No verified sensor data.'}
             </span>
             <span className="phase-label">
-              PHASE 02
+              PHASE 05
               <ArrowUpRight size={12} />
             </span>
           </div>
+          <WorkspaceStatus />
           <Outlet />
           <footer className="content-footer">
             <span>Br — Break the Rules</span>

@@ -1,0 +1,127 @@
+.account-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+.account-trigger {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 24px;
+  background: transparent;
+  color: #91a89e;
+}
+.account-trigger:hover,
+.account-trigger[aria-expanded='true'] {
+  background: #20342d;
+  border-color: #385045;
+}
+.account-avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #263e33;
+  border: 1px solid #405c4d;
+  color: #c9e9d4;
+  font-size: 11px;
+  font-weight: 600;
+}
+.account-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.account-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(310px, calc(100vw - 32px));
+  padding: 18px;
+  border: 1px solid #35483e;
+  border-radius: 14px;
+  background: #14211d;
+  box-shadow: 0 18px 48px #0006;
+  z-index: 60;
+}
+.account-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.account-identity .account-avatar {
+  width: 40px;
+  height: 40px;
+  font-size: 13px;
+}
+.account-identity > div {
+  min-width: 0;
+}
+.account-identity strong {
+  display: block;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.account-identity p {
+  font-size: 11px;
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+  color: #9caea5;
+}
+.account-private {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  color: #91b8a1;
+  margin: 17px 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #2d4036;
+}
+.account-logout {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid #425046;
+  background: #1d3026;
+  color: #e1ece2;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 12px;
+}
+.account-logout:hover {
+  background: #304538;
+  border-color: #6a8270;
+}
+.workspace-save-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 12px 0 20px;
+  padding: 8px 0;
+  font-size: 11px;
+}
+.workspace-save-status > p:first-child {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.workspace-save-status > p:first-child::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #91a2a3;
+}
+.workspace-save-status [role='alert'] {
+  color: #efb29b;
+}
