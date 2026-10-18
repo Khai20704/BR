@@ -1,0 +1,81 @@
+{
+  "startedAt": "2026-10-18T12:29:04.363Z",
+  "site": "https://breake-the-rules.web.app",
+  "api": "https://br-api-916064977717.asia-southeast1.run.app",
+  "checks": {
+    "deployedArtifacts": {
+      "passed": true,
+      "count": 4,
+      "sha256MatchesProductionBuild": true
+    },
+    "productionLoginPage": {
+      "passed": true,
+      "origin": "https://breake-the-rules.web.app"
+    },
+    "publicMobileLayout": {
+      "passed": true,
+      "width": 390,
+      "noHorizontalOverflow": true
+    },
+    "googlePopup": {
+      "passed": true,
+      "origin": "https://accounts.google.com",
+      "completedSignIn": false
+    },
+    "productionApi": {
+      "passed": true,
+      "browserOrigin": "https://breake-the-rules.web.app",
+      "health": {
+        "status": "ok",
+        "model_version": "thin-layer-1.0",
+        "gemini_configured": true
+      },
+      "baseline": {
+        "duration_minutes": 340,
+        "final_moisture_percent_wb": 24.9544,
+        "water_removed_kg": 5.923697,
+        "energy_kwh": 7.185737,
+        "model_version": "thin-layer-1.0",
+        "target_achieved": null
+      },
+      "adjusted": {
+        "duration_minutes": 450,
+        "final_moisture_percent_wb": 24.981,
+        "water_removed_kg": 5.921543,
+        "energy_kwh": 7.232551,
+        "model_version": "thin-layer-1.0",
+        "target_achieved": null
+      },
+      "baselinePlan": {
+        "provider": "deterministic-after-error",
+        "verification": "LIVE_GEMINI_NOT_VERIFIED",
+        "successfulTools": [],
+        "failedTools": []
+      },
+      "adjustedPlan": {
+        "provider": "deterministic-after-error",
+        "verification": "LIVE_GEMINI_NOT_VERIFIED",
+        "successfulTools": [],
+        "failedTools": []
+      },
+      "validation": "VALIDATED"
+    },
+    "liveGeminiFunctionCalling": {
+      "verified": false,
+      "baseline": {
+        "provider": "deterministic-after-error",
+        "verification": "LIVE_GEMINI_NOT_VERIFIED",
+        "successfulTools": [],
+        "failedTools": []
+      },
+      "adjusted": {
+        "provider": "deterministic-after-error",
+        "verification": "LIVE_GEMINI_NOT_VERIFIED",
+        "successfulTools": [],
+        "failedTools": []
+      }
+    }
+  },
+  "criticalError": "locator.isVisible: Target page, context or browser has been closed",
+  "finishedAt": "2026-10-18T12:31:17.711Z"
+}

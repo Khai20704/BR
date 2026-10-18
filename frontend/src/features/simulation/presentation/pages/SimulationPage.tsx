@@ -16,31 +16,54 @@ import {
 
 export function SimulationPage({
   load,
+  embedded = false,
 }: {
   load: (draft: ScenarioDraft) => Promise<SimulationPreview>
+  embedded?: boolean
 }) {
   const { draft, revision } = useScenario()
   const q = usePreviewQuery('simulation', () => load(draft), revision)
-  const data = q.data
+  const data = q.isFetching || q.error ? undefined : q.data
   return (
     <>
-      <PageHeader
-        eyebrow="THERMAL INTELLIGENCE / SIMULATION"
-        title="Thermal digital twin"
-        description="Explore the simulation workspace. Engineering validation comes next."
-        action={
-          data ? (
-            <ProvenanceTag provenance={data.provenance} />
-          ) : (
-            <Status value="NOT_VALIDATED" />
-          )
-        }
-      />
+      {embedded ? (
+        <h2>Thermal digital twin results</h2>
+      ) : (
+        <PageHeader
+          eyebrow="THERMAL INTELLIGENCE / SIMULATION"
+          title="Thermal digital twin"
+          description="Physics engine predictions and independent numerical validation. No experimental validation."
+          action={
+            data ? (
+              <ProvenanceTag provenance={data.provenance} />
+            ) : (
+              <Status value="NOT_VALIDATED" />
+            )
+          }
+        />
+      )}
       <RequestState
-        pending={q.isPending}
+        pending={q.isFetching}
         error={q.error}
         retry={() => void q.refetch()}
       />
+      {data && (
+        <Panel title="Target moisture assessment">
+          <p role="status">
+            {data.targetAchieved === true
+              ? 'Target achieved in the model and confirmed by independent backend validation.'
+              : data.targetAchieved === false
+                ? 'Target not achieved or not independently confirmed.'
+                : 'Target achievement is unverified: this response has no backend target validation.'}
+          </p>
+          <p>
+            Target:{' '}
+            {data.targetMoisturePercentWb ?? draft.targetMoisturePercentWb}%
+            wet-basis. Predicted final moisture:{' '}
+            {data.finalMoisturePercentWb.toFixed(2)}% wet-basis.
+          </p>
+        </Panel>
+      )}
       <div className="two-column">
         <Panel
           title="Moisture prediction"
@@ -84,15 +107,19 @@ export function SimulationPage({
             },
             {
               label: 'Duration',
-              value: data ? formatMeasurement(data.durationMinutes, 'min', 0) : '·',
+              value: data
+                ? formatMeasurement(data.durationMinutes, 'min', 0)
+                : '·',
             },
             {
-              label: 'Energy consumed',
+              label: 'Estimated Thermal Energy',
               value: data ? formatMeasurement(data.energyKwh, 'kWh', 3) : '·',
             },
             {
               label: 'Latent energy floor',
-              value: data ? formatMeasurement(data.minimumEnergyKwh, 'kWh', 3) : '·',
+              value: data
+                ? formatMeasurement(data.minimumEnergyKwh, 'kWh', 3)
+                : '·',
             },
           ].map((row) => (
             <div className="info-row" key={row.label}>
@@ -129,6 +156,19 @@ export function SimulationPage({
               ? 'This trajectory is a model prediction with an independent energy plausibility check. It is not an experimentally validated drying curve.'
               : 'A material model, thermal inputs and operating constraints are needed before feasibility can be assessed.'}
           </p>
+          {data?.validation && (
+            <>
+              <p>{data.validation.summary}</p>
+              <ul className="checklist">
+                {data.validation.checks.map((check) => (
+                  <li key={check.code}>
+                    {check.passed ? 'PASS' : 'FAIL'} · {check.code}:{' '}
+                    {check.detail}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </Panel>
       </div>
     </>

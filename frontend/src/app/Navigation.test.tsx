@@ -23,29 +23,31 @@ vi.mock('@/core/workspace/repository', () => ({
     load: async () => null,
     profile: async () => {},
     save: async () => 1,
+    list: async () => ({ rows: [], more: false }),
   }),
 }))
 beforeEach(() => window.history.replaceState({}, '', '/'))
-it('navigates to all eight workspace pages', async () => {
+it('shows exactly four primary destinations and starts batch creation from Home', async () => {
   render(<App />)
   await screen.findByRole('navigation')
   const nav = within(screen.getByRole('navigation'))
   const pages = [
-    ['Site setup', 'Site setup'],
-    ['Batch setup', 'Batch setup'],
-    ['Thermal profile', 'Thermal profile'],
-    ['Thermal digital twin', 'Thermal digital twin'],
-    ['AI planning', 'AI planning'],
-    ['Adaptive replanning', 'Adaptive replanning'],
-    ['Benchmark', 'Benchmark'],
-    ['Overview', 'Br — AI Thermal Engineer'],
+    ['My Shop', 'My Shop'],
+    ['Drying History', 'Drying History'],
+    ['Settings', 'Settings'],
+    ['Home', 'Home'],
   ]
+  expect(nav.getAllByRole('link')).toHaveLength(4)
   for (const [link, title] of pages) {
     fireEvent.click(nav.getByRole('link', { name: link }))
     expect(
       screen.getByRole('heading', { level: 1, name: title }),
     ).toBeInTheDocument()
   }
+  fireEvent.click(screen.getByRole('link', { name: 'Create a Drying Batch' }))
+  expect(
+    screen.getByRole('heading', { level: 1, name: 'Create a Drying Batch' }),
+  ).toBeInTheDocument()
 })
 it('keeps the not-found route', async () => {
   window.history.replaceState({}, '', '/not-a-page')
@@ -56,7 +58,24 @@ it('keeps the not-found route', async () => {
   ).toBeInTheDocument()
   fireEvent.click(screen.getByRole('link', { name: 'Return home' }))
   expect(
-    screen.getByRole('heading', { level: 1, name: 'Br — AI Thermal Engineer' }),
+    screen.getByRole('heading', { level: 1, name: 'Home' }),
+  ).toBeInTheDocument()
+})
+it.each([
+  '/batch',
+  '/thermal-profile',
+  '/simulation',
+  '/ai-planning',
+  '/replanning',
+  '/benchmark',
+])('keeps %s bookmarks in the new batch journey', async (path) => {
+  window.history.replaceState({}, '', path)
+  render(<App />)
+  expect(
+    await screen.findByRole('heading', {
+      level: 1,
+      name: 'Create a Drying Batch',
+    }),
   ).toBeInTheDocument()
 })
 it('opens and dismisses mobile navigation with Escape', async () => {

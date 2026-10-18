@@ -3,6 +3,7 @@ import {
   simulationSchema,
   type SimulationPayload,
 } from '@/core/api/backend-schemas'
+import { toPlanStatus } from '@/core/preview/plan-types'
 import { formatMinute } from '@/core/preview/format'
 import { modelPredictionProvenance } from '@/core/provenance/Provenance'
 import type { ScenarioDraft } from '@/core/scenario/scenario-draft'
@@ -20,14 +21,27 @@ export function mapSimulation(payload: SimulationPayload): SimulationPreview {
       time: formatMinute(point.minute),
       moisture: point.moisture_percent_wb,
     })),
-    status: 'NOT_VALIDATED',
+    status: toPlanStatus(payload.validation?.status ?? 'NOT_VALIDATED'),
+    targetMoisturePercentWb: payload.target_moisture_percent_wb ?? undefined,
+    targetAchieved: payload.target_achieved ?? undefined,
+    validation: payload.validation
+      ? {
+          ...payload.validation,
+          status: toPlanStatus(payload.validation.status),
+        }
+      : undefined,
     finalMoisturePercentWb: payload.final_moisture_percent_wb,
     durationMinutes: payload.duration_minutes,
     waterRemovedKg: payload.water_removed_kg,
     energyKwh: payload.energy_kwh,
     minimumEnergyKwh: payload.minimum_energy_kwh,
     modelVersion: payload.model_version,
-    notes: payload.notes,
+    notes: payload.notes.map((note) =>
+      note.replace(
+        'Target moisture reached at minute',
+        'Coarse model predicts target crossing at minute',
+      ),
+    ),
   }
 }
 

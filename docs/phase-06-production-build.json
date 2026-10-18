@@ -1,0 +1,30 @@
+{
+  "builtAt": "2026-10-18T12:26:01.105Z",
+  "config": {
+    "VITE_FIREBASE_PROJECT_ID": "breake-the-rules",
+    "VITE_FIREBASE_AUTH_DOMAIN": "breake-the-rules.firebaseapp.com",
+    "VITE_FIREBASE_APP_ID": "1:330692718529:web:a9b24b70cdfe2a7c980940",
+    "VITE_FIREBASE_MESSAGING_SENDER_ID": "330692718529",
+    "VITE_API_BASE_URL": "https://br-api-916064977717.asia-southeast1.run.app",
+    "VITE_DATA_MODE": "http",
+    "emulatorsEnabled": false
+  },
+  "files": [
+    {
+      "path": "index.html",
+      "sha256": "ae69f0b178b3364f49650f7a34fce488ea73174b9eda8ce13abb2d0668698296"
+    },
+    {
+      "path": "assets/index-BGLT-ZJT.js",
+      "sha256": "3f18d515203a0bf31233683015df26d3d288cc6994841bbe4aa3fea3cffcbeb3"
+    },
+    {
+      "path": "assets/index-CyZnS6vW.css",
+      "sha256": "bc266d1019cdd9a4545d96a66b6709c6fdb7fed8cd3e329002f42c6cb78370ba"
+    },
+    {
+      "path": "assets/PreviewChartCanvas-CmD_iGIy.js",
+      "sha256": "3ad5985068257bad054e192ca7a3eb7465ce4c06eb853978ca1f2e9f28de2150"
+    }
+  ]
+}

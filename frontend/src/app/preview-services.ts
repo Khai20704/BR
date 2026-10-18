@@ -1,3 +1,7 @@
+import {
+  scenarioSamples,
+  describeScenarioInputs,
+} from '@/core/scenario/scenario-draft'
 import { mapThermalWindow } from '@/features/thermal-profile/infrastructure/repositories/HttpPreviewRepository'
 import { loadSourceWindow } from '@/core/scenario/scenario-gateway'
 import { createHttpClient } from '@/core/api/http-client'
@@ -14,6 +18,13 @@ import { loadScenarioPlan } from '@/features/ai-planning/infrastructure/reposito
 import { loadScenarioBenchmark } from '@/features/benchmark/infrastructure/repositories/HttpPreviewRepository'
 import { createReplanPreview } from '@/features/replanning/infrastructure/repositories/HttpPreviewRepository'
 import { createBatchMassBalance } from '@/features/batch/infrastructure/api/BatchMassBalance'
+import { postScenario } from '@/core/scenario/scenario-gateway'
+import {
+  simulationSchema,
+  planEnvelopeSchema,
+  massBalanceSchema,
+  replanEnvelopeSchema,
+} from '@/core/api/backend-schemas'
 
 /** A page loader that runs the scenario currently being edited. */
 export type PreviewLoader<T> = () => Promise<T>
@@ -42,44 +53,44 @@ const httpClient = createHttpClient(apiBaseUrl)
  * bundled into a production build, and they refuse to load outside development.
  */
 async function loadSimulationFixture(): Promise<SimulationPreview> {
-  const { createFixturePreviewRepository } = await import(
-    '@/features/simulation/infrastructure/repositories/FixturePreviewRepository'
-  )
+  const { createFixturePreviewRepository } =
+    await import('@/features/simulation/infrastructure/repositories/FixturePreviewRepository')
   return createFixturePreviewRepository().load()
 }
 
 async function loadPlanningFixture(): Promise<PlanningPreview> {
-  const { createFixturePreviewRepository } = await import(
-    '@/features/ai-planning/infrastructure/repositories/FixturePreviewRepository'
-  )
+  const { createFixturePreviewRepository } =
+    await import('@/features/ai-planning/infrastructure/repositories/FixturePreviewRepository')
   return createFixturePreviewRepository().load()
 }
 
 async function loadReplanningFixture(): Promise<ReplanningPreview> {
-  const { createFixturePreviewRepository } = await import(
-    '@/features/replanning/infrastructure/repositories/FixturePreviewRepository'
-  )
+  const { createFixturePreviewRepository } =
+    await import('@/features/replanning/infrastructure/repositories/FixturePreviewRepository')
   return createFixturePreviewRepository().load()
 }
 
 async function loadBenchmarkFixture(): Promise<BenchmarkPreview> {
-  const { createFixturePreviewRepository } = await import(
-    '@/features/benchmark/infrastructure/repositories/FixturePreviewRepository'
-  )
+  const { createFixturePreviewRepository } =
+    await import('@/features/benchmark/infrastructure/repositories/FixturePreviewRepository')
   return createFixturePreviewRepository().load()
 }
 
 const thermalPreview: ScenarioLoader<ThermalPreview> = async (draft) => {
   if (dataMode === 'fixture') {
-    const { createFixturePreviewRepository } = await import('@/features/thermal-profile/infrastructure/repositories/FixturePreviewRepository')
+    const { createFixturePreviewRepository } =
+      await import('@/features/thermal-profile/infrastructure/repositories/FixturePreviewRepository')
     return createFixturePreviewRepository().load()
   }
   const window = await loadSourceWindow(httpClient)
-  const result = mapThermalWindow({ ...window, points: window.points.map(point => ({
-    ...point, temperature_c: draft.sourceTemperatureC ?? point.temperature_c,
-    available_heat_kw: draft.availableHeatKw ?? point.available_heat_kw,
-  })) })
-  return { ...result, provenance: { ...result.provenance, detail: draft.sourceTemperatureC === undefined ? 'SYNTHETIC INPUT: backend demo source. Not measured.' : 'MANUAL INPUT: operator-entered source applied to the backend time window. Not a verified measurement.' } }
+  const result = mapThermalWindow({
+    ...window,
+    points: scenarioSamples(draft, window),
+  })
+  return {
+    ...result,
+    provenance: { ...result.provenance, detail: describeScenarioInputs(draft) },
+  }
 }
 
 /**
@@ -93,15 +104,24 @@ export const previewServices = {
   simulation: ((draft) =>
     dataMode === 'fixture'
       ? loadSimulationFixture()
-      : loadScenarioSimulation(httpClient, draft)) satisfies ScenarioLoader<SimulationPreview>,
+      : loadScenarioSimulation(
+          httpClient,
+          draft,
+        )) satisfies ScenarioLoader<SimulationPreview>,
   planning: ((draft) =>
     dataMode === 'fixture'
       ? loadPlanningFixture()
-      : loadScenarioPlan(httpClient, draft)) satisfies ScenarioLoader<PlanningPreview>,
+      : loadScenarioPlan(
+          httpClient,
+          draft,
+        )) satisfies ScenarioLoader<PlanningPreview>,
   benchmark: ((draft) =>
     dataMode === 'fixture'
       ? loadBenchmarkFixture()
-      : loadScenarioBenchmark(httpClient, draft)) satisfies ScenarioLoader<BenchmarkPreview>,
+      : loadScenarioBenchmark(
+          httpClient,
+          draft,
+        )) satisfies ScenarioLoader<BenchmarkPreview>,
 } satisfies Record<string, unknown>
 
 /** Replanning asks the backend for a specific changed temperature. */
@@ -118,3 +138,41 @@ export const replanService = (
  * prediction, and it fails closed when no backend is reachable.
  */
 export const batchMassBalance = createBatchMassBalance(httpClient)
+
+/** Operator flow always asks FastAPI; illustrative fixtures never become plans. */
+export const dryingServices = {
+  simulate: (draft: ScenarioDraft) =>
+    postScenario({
+      client: httpClient,
+      path: '/api/v1/simulations',
+      schema: simulationSchema,
+      featureLabel: 'drying prediction',
+      draft,
+    }),
+  plan: (draft: ScenarioDraft) =>
+    postScenario({
+      client: httpClient,
+      path: '/api/v1/plans',
+      schema: planEnvelopeSchema,
+      featureLabel: 'drying plan',
+      draft,
+    }),
+  massBalance: (draft: ScenarioDraft) =>
+    postScenario({
+      client: httpClient,
+      path: '/api/v1/physics/mass-balance',
+      schema: massBalanceSchema,
+      featureLabel: 'mass balance',
+      draft,
+    }),
+  benchmark: (draft: ScenarioDraft) => loadScenarioBenchmark(httpClient, draft),
+  replan: (draft: ScenarioDraft, temperatureC: number) =>
+    postScenario({
+      client: httpClient,
+      path: '/api/v1/plans/replan',
+      schema: replanEnvelopeSchema,
+      featureLabel: 'updated drying plan',
+      draft,
+      extra: { changed_temperature_c: temperatureC, elapsed_minutes: 0 },
+    }),
+}

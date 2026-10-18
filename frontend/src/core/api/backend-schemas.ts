@@ -34,17 +34,6 @@ const dryingPointSchema = z.object({
   energy_kwh: z.number().finite(),
 })
 
-export const simulationSchema = z.object({
-  final_moisture_percent_wb: z.number().finite(),
-  duration_minutes: z.number().int(),
-  water_removed_kg: z.number().finite(),
-  energy_kwh: z.number().finite(),
-  minimum_energy_kwh: z.number().finite(),
-  model_version: z.string().min(1),
-  notes: z.array(z.string()),
-  points: z.array(dryingPointSchema),
-})
-
 const validationSchema = z.object({
   status: z.string().min(1),
   summary: z.string(),
@@ -55,6 +44,20 @@ const validationSchema = z.object({
       detail: z.string(),
     }),
   ),
+})
+
+export const simulationSchema = z.object({
+  final_moisture_percent_wb: z.number().finite(),
+  duration_minutes: z.number().int(),
+  water_removed_kg: z.number().finite(),
+  energy_kwh: z.number().finite(),
+  minimum_energy_kwh: z.number().finite(),
+  model_version: z.string().min(1),
+  notes: z.array(z.string()),
+  points: z.array(dryingPointSchema),
+  target_moisture_percent_wb: z.number().finite().nullish(),
+  target_achieved: z.boolean().nullish(),
+  validation: validationSchema.nullish(),
 })
 
 const phaseSchema = z.object({

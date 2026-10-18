@@ -1,0 +1,11 @@
+{
+  "project": "breake-the-rules",
+  "site": "breake-the-rules",
+  "channel": "live",
+  "release": "projects/breake-the-rules/sites/breake-the-rules/channels/live/releases/1792319888766000",
+  "version": "projects/breake-the-rules/sites/breake-the-rules/versions/bd7929e21ff1a2b9",
+  "releaseTime": "2026-10-18T10:38:08.766Z",
+  "branch": "main",
+  "baseCommit": "77b18fa11fb79f0c834532c748632ff56321b5b7",
+  "source": "Phase 06 present in uncommitted working tree; deployment builds that working tree"
+}

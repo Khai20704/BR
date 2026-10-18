@@ -53,7 +53,8 @@ export function isDocumentedDraft(draft: ScenarioDraft): boolean {
       DOCUMENTED_DRAFT.targetMoisturePercentWb &&
     draft.maxDurationMinutes === DOCUMENTED_DRAFT.maxDurationMinutes &&
     draft.minTemperatureC === DOCUMENTED_DRAFT.minTemperatureC &&
-    draft.maxTemperatureC === DOCUMENTED_DRAFT.maxTemperatureC
+    draft.maxTemperatureC === DOCUMENTED_DRAFT.maxTemperatureC &&
+    draft.relativeHumidity === DOCUMENTED_DRAFT.relativeHumidity
   )
 }
 
@@ -104,12 +105,7 @@ export function buildScenarioBody(
     profile: {
       source_id: window.source_id,
       name: window.name,
-      samples: window.points.map((point) => ({
-        minute: point.minute,
-        temperature_c: draft.sourceTemperatureC ?? point.temperature_c,
-        available_heat_kw: draft.availableHeatKw ?? point.available_heat_kw,
-        relative_humidity: draft.relativeHumidity,
-      })),
+      samples: scenarioSamples(draft, window),
     },
     constraints: {
       max_duration_minutes: draft.maxDurationMinutes,
@@ -125,4 +121,37 @@ export function describeScenarioInputs(draft: ScenarioDraft): string {
   return isDocumentedDraft(draft)
     ? 'Documented default scenario supplied by the backend. Not a measurement.'
     : `Scenario entered in this workspace (${draft.massKg} kg, ${draft.initialMoisturePercentWb}% to ${draft.targetMoisturePercentWb}% wet basis, ${draft.maxDurationMinutes} min window). Not a measurement.`
+}
+
+/** Explicit source overrides describe a constant synthetic operating window.
+ * Demo curves are clipped, never extrapolated beyond their supplied horizon. */
+export function scenarioSamples(
+  draft: ScenarioDraft,
+  window: ThermalWindowPayload,
+) {
+  const constant =
+    draft.sourceTemperatureC !== undefined &&
+    draft.availableHeatKw !== undefined
+  const end = constant
+    ? draft.maxDurationMinutes
+    : Math.min(draft.maxDurationMinutes, window.points.at(-1)!.minute)
+  const points = constant
+    ? [
+        { ...window.points[0]!, minute: 0 },
+        { ...window.points[0]!, minute: end },
+      ]
+    : [
+        ...window.points.filter((p) => p.minute < end),
+        {
+          ...([...window.points].reverse().find((p) => p.minute <= end) ??
+            window.points[0]!),
+          minute: end,
+        },
+      ]
+  return points.map((point) => ({
+    minute: point.minute,
+    temperature_c: draft.sourceTemperatureC ?? point.temperature_c,
+    available_heat_kw: draft.availableHeatKw ?? point.available_heat_kw,
+    relative_humidity: draft.relativeHumidity,
+  }))
 }

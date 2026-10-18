@@ -13,6 +13,7 @@ from ..agents.gemini_planner import _deterministic, is_configured, narrate_plan
 from ..agents.tools import Scenario
 from ..domain.models import Constraints, Plan
 from ..domain.physics.drying import MODEL_VERSION, simulate
+from ..domain.validator.plan_validator import validate_plan
 from ..domain.physics.mass_balance import compute_mass_balance
 from ..services.benchmark_service import MethodResult, run_benchmark
 from ..services.planning_service import (
@@ -36,6 +37,7 @@ from .responses import (
     SimulationOut,
     plan_out,
     simulation_out,
+    validation_out,
 )
 from .schemas import (
     BenchmarkRequest,
@@ -173,16 +175,33 @@ def run_simulation(body: SimulationRequest) -> SimulationOut:
                 scenario.constraints,
                 to_phases(body.phases),
             )
+            report = validate_plan(scenario.profile, scenario.batch,
+                                   scenario.constraints, to_phases(body.phases), result)
         else:
             plan, _ = build_plan(
                 scenario.batch, scenario.profile, scenario.constraints
             )
             result = plan.predicted
+            report = plan.validation
     except ValueError as error:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
         ) from error
-    return simulation_out(result)
+    output = simulation_out(result)
+    output.target_moisture_percent_wb = body.batch.target_moisture_percent_wb
+    output.target_achieved = (
+        result.final_moisture_wb <= scenario.batch.target_moisture_wb
+        and any(check.code == 'TARGET_ACHIEVED_INDEPENDENTLY' and check.passed
+                for check in report.checks)
+    )
+    output.validation = validation_out(report)
+    # Coarse integration notes are predictions, not independent confirmation.
+    output.notes = [note.replace('Target moisture reached at minute',
+                                'Coarse model predicts target crossing at minute')
+                    for note in output.notes]
+    output.notes.append('Sample relative humidity is recorded but does not affect this model; '
+                        'equilibrium moisture uses the fixed maximum humidity constraint.')
+    return output
 
 
 @router.post('/plans', response_model=PlanEnvelopeOut, tags=['planning'])

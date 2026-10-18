@@ -1,13 +1,4 @@
-import {
-  Boxes,
-  Cpu,
-  Gauge,
-  Layers,
-  LayoutDashboard,
-  RefreshCw,
-  Sparkles,
-  Thermometer,
-} from 'lucide-react'
+import { House, Store, History, Settings } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 export interface NavItem {
@@ -21,43 +12,26 @@ export interface NavGroup {
   readonly items: readonly NavItem[]
 }
 
-/**
- * The eight workspace destinations. Labels are the accessible names of the
- * sidebar links and must stay stable — navigation tests match on them.
- */
+/** The four operator-facing destinations. Batch creation starts from Home. */
 export const navGroups: readonly NavGroup[] = [
   {
     title: 'Workspace',
     items: [
-      { label: 'Overview', path: '/', icon: LayoutDashboard },
-      { label: 'Site setup', path: '/site', icon: Layers },
-      { label: 'Batch setup', path: '/batch', icon: Boxes },
-    ],
-  },
-  {
-    title: 'Thermal intelligence',
-    items: [
-      { label: 'Thermal profile', path: '/thermal-profile', icon: Thermometer },
-      { label: 'Thermal digital twin', path: '/simulation', icon: Cpu },
-    ],
-  },
-  {
-    title: 'Decision intelligence',
-    items: [
-      { label: 'AI planning', path: '/ai-planning', icon: Sparkles },
-      { label: 'Adaptive replanning', path: '/replanning', icon: RefreshCw },
-      { label: 'Benchmark', path: '/benchmark', icon: Gauge },
+      { label: 'Home', path: '/', icon: House },
+      { label: 'My Shop', path: '/shop', icon: Store },
+      { label: 'Drying History', path: '/history', icon: History },
+      { label: 'Settings', path: '/settings', icon: Settings },
     ],
   },
 ]
 
 export const navItems: readonly NavItem[] = navGroups.flatMap(
-  group => group.items,
+  (group) => group.items,
 )
 
 export function findNavItem(pathname: string): NavItem {
   return (
-    navItems.find(item => item.path === pathname) ??
-    navItems[0] ?? { label: 'Overview', path: '/', icon: LayoutDashboard }
+    navItems.find((item) => item.path === pathname) ??
+    navItems[0] ?? { label: 'Home', path: '/', icon: House }
   )
 }

@@ -9,6 +9,48 @@ from fastapi.testclient import TestClient
 PLAN_STATUSES = {'VALIDATED', 'NEED_MORE_DATA', 'NO_FEASIBLE_PLAN', 'NOT_VALIDATED'}
 
 
+def test_simulation_exposes_independent_target_verdict(client, scenario_payload):
+    body = client.post('/api/v1/simulations', json=scenario_payload).json()
+    target = scenario_payload['batch']['target_moisture_percent_wb']
+    check = next(c for c in body['validation']['checks']
+                 if c['code'] == 'TARGET_ACHIEVED_INDEPENDENTLY')
+    assert body['target_moisture_percent_wb'] == target
+    assert body['target_achieved'] == (check['passed'] and body['final_moisture_percent_wb'] <= target)
+    assert not any(n.startswith('Target moisture reached') for n in body['notes'])
+
+
+def test_short_thermal_window_and_zero_heat_are_not_success(client, scenario_payload):
+    payload = deepcopy(scenario_payload)
+    payload['constraints']['max_duration_minutes'] = 7
+    for sample in payload['profile']['samples']:
+        sample['available_heat_kw'] = 0
+    body = client.post('/api/v1/simulations', json=payload).json()
+    assert body['duration_minutes'] <= 7
+    assert body['target_achieved'] is False
+    assert body['final_moisture_percent_wb'] == 62
+    assert body['points'][-1]['minute'] == body['duration_minutes']
+    assert body['validation']['status'] != 'VALIDATED'
+
+
+def test_sample_humidity_is_not_a_physics_control(client, scenario_payload):
+    outputs = []
+    for humidity in (0.1, 0.9):
+        payload = deepcopy(scenario_payload)
+        for sample in payload['profile']['samples']:
+            sample['relative_humidity'] = humidity
+        outputs.append(client.post('/api/v1/simulations', json=payload).json())
+    assert outputs[0]['final_moisture_percent_wb'] == outputs[1]['final_moisture_percent_wb']
+    assert outputs[0]['energy_kwh'] == outputs[1]['energy_kwh']
+
+
+def test_explicit_phases_include_validation(client, scenario_payload):
+    payload = deepcopy(scenario_payload)
+    payload['phases'] = [{'temperature_c': 40, 'duration_minutes': 13}]
+    body = client.post('/api/v1/simulations', json=payload).json()
+    assert body['duration_minutes'] == 13
+    assert len(body['validation']['checks']) == 6
+
+
 def test_health_reports_model_version(client: TestClient) -> None:
     response = client.get('/api/v1/health')
     assert response.status_code == 200

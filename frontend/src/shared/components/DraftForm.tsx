@@ -9,6 +9,7 @@ export interface DraftField {
   unit?: string
   type?: 'text' | 'number'
   options?: string[]
+  optionLabels?: Record<string, string>
   help?: string
 }
 export function DraftForm({
@@ -19,6 +20,8 @@ export function DraftForm({
   onAutosave,
   footerNote = 'Local draft only · no backend submission',
   savedMessage = 'Draft reviewed locally. Inputs are not engineering-validated or saved to a server.',
+  submitLabel,
+  advancedFields = [],
 }: {
   fields: DraftField[]
   schema: z.ZodType<Record<string, unknown>>
@@ -27,6 +30,8 @@ export function DraftForm({
   onReview: (values: Record<string, unknown>) => Promise<void>
   footerNote?: string
   savedMessage?: string
+  submitLabel?: string
+  advancedFields?: DraftField[]
 }) {
   const [values, setValues] = useState(initialValues)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -35,6 +40,7 @@ export function DraftForm({
   const changeNumber = useRef(0)
   const firstValues = useRef(values)
   const latest = useRef({ schema, onAutosave })
+  const [advancedOpen, setAdvancedOpen] = useState(false)
   useEffect(() => {
     latest.current = { schema, onAutosave }
   }, [schema, onAutosave])
@@ -70,6 +76,12 @@ export function DraftForm({
     setFailure('')
     const result = schema.safeParse(values)
     if (!result.success) {
+      if (
+        result.error.issues.some((issue) =>
+          advancedFields.some((field) => field.name === issue.path[0]),
+        )
+      )
+        setAdvancedOpen(true)
       setErrors(
         result.error.issues.reduce<Record<string, string>>(
           (messages, issue) => {
@@ -95,63 +107,75 @@ export function DraftForm({
       setState('idle')
     }
   }
+  const renderFields = (items: DraftField[]) =>
+    items.map((field) => (
+      <div className="field" key={field.name}>
+        <label htmlFor={field.name}>
+          {field.label}
+          {field.unit && <span>{field.unit}</span>}
+        </label>
+        {field.options ? (
+          <select
+            id={field.name}
+            value={values[field.name] ?? ''}
+            onChange={(e) => {
+              setValues({ ...values, [field.name]: e.target.value })
+              setState('idle')
+            }}
+            aria-invalid={!!errors[field.name]}
+            aria-describedby={field.name + '-help'}
+            disabled={state === 'saving'}
+          >
+            {field.options.map((option) => (
+              <option key={option} value={option}>
+                {field.optionLabels?.[option] ?? option}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            id={field.name}
+            type={field.type ?? 'text'}
+            step="any"
+            value={values[field.name] ?? ''}
+            placeholder={field.placeholder}
+            onChange={(e) => {
+              setValues({ ...values, [field.name]: e.target.value })
+              setState('idle')
+            }}
+            aria-invalid={!!errors[field.name]}
+            aria-describedby={field.name + '-help'}
+            disabled={state === 'saving'}
+          />
+        )}
+        <small
+          id={field.name + '-help'}
+          className={errors[field.name] ? 'field-error' : ''}
+        >
+          {errors[field.name] ?? field.help}
+        </small>
+      </div>
+    ))
   return (
     <form onSubmit={submit} noValidate>
-      <div className="form-grid">
-        {fields.map((field) => (
-          <div className="field" key={field.name}>
-            <label htmlFor={field.name}>
-              {field.label}
-              {field.unit && <span>{field.unit}</span>}
-            </label>
-            {field.options ? (
-              <select
-                id={field.name}
-                value={values[field.name] ?? ''}
-                onChange={(e) => {
-                  setValues({ ...values, [field.name]: e.target.value })
-                  setState('idle')
-                }}
-                aria-invalid={!!errors[field.name]}
-                aria-describedby={field.name + '-help'}
-              >
-                {field.options.map((option) => (
-                  <option key={option}>{option}</option>
-                ))}
-              </select>
-            ) : (
-              <input
-                id={field.name}
-                type={field.type ?? 'text'}
-                step="any"
-                value={values[field.name] ?? ''}
-                placeholder={field.placeholder}
-                onChange={(e) => {
-                  setValues({ ...values, [field.name]: e.target.value })
-                  setState('idle')
-                }}
-                aria-invalid={!!errors[field.name]}
-                aria-describedby={field.name + '-help'}
-              />
-            )}
-            <small
-              id={field.name + '-help'}
-              className={errors[field.name] ? 'field-error' : ''}
-            >
-              {errors[field.name] ?? field.help}
-            </small>
-          </div>
-        ))}
-      </div>
+      <div className="form-grid">{renderFields(fields)}</div>
+      {advancedFields.length > 0 && (
+        <details
+          className="advanced-inputs"
+          open={advancedOpen}
+          onToggle={(e) => setAdvancedOpen(e.currentTarget.open)}
+        >
+          <summary>Additional drying conditions</summary>
+          <div className="form-grid">{renderFields(advancedFields)}</div>
+        </details>
+      )}
       <div className="form-footer">
         <span>{footerNote}</span>
         <button className="button primary" disabled={state === 'saving'}>
           <Save size={15} />
           {state === 'saving'
             ? 'Reviewing…'
-            : onAutosave
-              ? 'Save now'
-              : 'Review draft'}
+            : (submitLabel ?? (onAutosave ? 'Save now' : 'Review draft'))}
         </button>
       </div>
       {state === 'saved' && (

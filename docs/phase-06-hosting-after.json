@@ -1,0 +1,10 @@
+﻿{
+    "project":  "breake-the-rules",
+    "site":  "breake-the-rules",
+    "url":  "https://breake-the-rules.web.app",
+    "release":  "projects/breake-the-rules/sites/breake-the-rules/channels/live/releases/1792326402007000",
+    "version":  "projects/breake-the-rules/sites/breake-the-rules/versions/63151e68a7f7fe5b",
+    "releaseTime":  "2026-10-18T12:26:42.007Z",
+    "status":  "FINALIZED",
+    "deploymentScope":  "hosting only"
+}

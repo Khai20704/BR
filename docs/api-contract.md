@@ -78,6 +78,19 @@ optimized schedule is simulated. Returns `final_moisture_percent_wb`,
 `model_version`, `notes`, and `points[]` of
 `{minute, moisture_percent_wb, temperature_c, water_removed_kg, energy_kwh}`.
 
+The simulation POST also returns `target_moisture_percent_wb`,
+`target_achieved`, and `validation: {status, summary, checks}`. Achievement
+requires both the coarse prediction to meet the requested target and the
+existing independent `TARGET_ACHIEVED_INDEPENDENTLY` check to pass. Overall
+feasibility additionally requires the other validation checks. These are
+numerical model checks, not experimental validation. Legacy workspace
+snapshots may omit this assessment (or return null); the UI marks it unverified.
+
+Sample `relative_humidity` is accepted and persisted but currently does not
+affect the drying calculation. Equilibrium moisture uses the constraint
+`max_relative_humidity` (0.85 in the frontend). The UI does not expose humidity
+as a physics sensitivity control or change that constraint based on sample RH.
+
 ### `POST /api/v1/plans`
 
 Returns `{plan, candidates, narrative}`.
@@ -162,7 +175,9 @@ validated.
 HTTP mode sends the active session batch and thermal profile to engineering POST
 endpoints. Site Setup optionally overrides temperature and recoverable heat at
 all source-window samples; these remain synthetic inputs. The thermal views
-show that same profile. Source and batch edits are session-only, not server saves.
+show that same profile. Signed-in source and batch edits are persisted in the
+per-user Firestore workspace with optimistic scenario versioning; successful
+simulation requests retain their input and output snapshots in history.
 The replan UI sends elapsed_minutes=0 and compares a computed configured-source
 baseline with the requested changed_temperature_c. POST replan narration uses
 the changed profile deterministically, with no additional Gemini request.

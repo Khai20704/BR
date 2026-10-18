@@ -57,7 +57,7 @@ export function AppShell({
         <main className="content">{children}</main>
         <footer className="app-footer">
           <span>
-            Br — AI Thermal Engineer · engineering preview, no live backend
+            Br AI Thermal Engineer · engineering preview, no live backend
           </span>
           <span className="footer-links">
             <a href="#architecture">Architecture</a>

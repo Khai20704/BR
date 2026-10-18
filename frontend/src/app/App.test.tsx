@@ -4,6 +4,6 @@ import { App } from './App'
 it('requires login before opening private workspace', () => {
   render(<App />)
   expect(
-    screen.getByRole('heading', { name: 'Your heat. Your workspace.' }),
+    screen.getByRole('heading', { name: /Good energy.*Better possibilities/ }),
   ).toBeInTheDocument()
 })

@@ -10,6 +10,11 @@ export function PreviewChart(props: {
   label: string
   unit: string
   color?: string
+  provenanceLabel?: string
+  target?: number
+  comparisonLabel?: string
+  xAxisLabel?: string
+  yAxisLabel?: string
 }) {
   return (
     <Suspense

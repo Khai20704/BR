@@ -17,5 +17,8 @@ export interface SimulationPreview {
   readonly energyKwh: number
   readonly minimumEnergyKwh: number
   readonly modelVersion: string
+  readonly targetMoisturePercentWb?: number
+  readonly targetAchieved?: boolean
+  readonly validation?: import('@/core/preview/plan-types').ValidationPreview
   readonly notes: readonly string[]
 }

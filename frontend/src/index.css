@@ -1674,3 +1674,330 @@ table caption {
     visibility: visible;
   }
 }
+
+.thermal-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: 16px;
+  border: 0;
+  padding: 0;
+  margin: 16px 0;
+}
+.thermal-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.thermal-fields input {
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  background: var(--bg, #101c22);
+  color: inherit;
+  border: 1px solid #38504f;
+  border-radius: 6px;
+}
+.thermal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+/* Phase 06: one operator journey, with secondary details tucked away. */
+.home-welcome {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 40px;
+  padding: clamp(24px, 4vw, 52px);
+  border: 1px solid #2a4e40;
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at top right, #23504388, transparent 70%), #12271f;
+}
+.home-welcome h2 {
+  font-size: clamp(30px, 3.4vw, 46px);
+  line-height: 1.16;
+  letter-spacing: -1.2px;
+  margin: 18px 0;
+}
+.home-welcome h2 span {
+  color: var(--green);
+}
+.home-welcome p {
+  max-width: 540px;
+  line-height: 1.8;
+  color: #b6c9c1;
+  margin-bottom: 28px;
+}
+.home-welcome small {
+  display: block;
+  margin-top: 18px;
+  color: #a2b8ad;
+  line-height: 1.6;
+}
+.home-symbol {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 22px;
+  color: #83d9b8;
+  font-size: 16px;
+  text-align: center;
+}
+.home-shortcuts h3 {
+  font-size: 21px;
+  margin: 0;
+}
+.home-shortcuts p {
+  line-height: 1.7;
+}
+.drying-flow {
+  max-width: 1050px;
+  margin: 0 auto;
+}
+.drying-flow .page-heading h1:focus {
+  outline: none;
+}
+.drying-results {
+  display: grid;
+  gap: 22px;
+}
+.drying-results .panel {
+  margin: 0;
+}
+.assessment-outcome {
+  font-size: 22px;
+  line-height: 1.4;
+  margin: 4px 0 14px;
+}
+.assessment-outcome.green {
+  color: #69dfb5;
+}
+.assessment-outcome.amber {
+  color: #e9bf8b;
+}
+.drying-key-results {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  padding: 12px 0;
+}
+.drying-key-results > div {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.drying-key-results > div > span {
+  color: #a7bbb2;
+  font-size: 13px;
+}
+.drying-key-results strong {
+  font-size: clamp(24px, 2.5vw, 34px);
+  letter-spacing: -1px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.drying-key-results small {
+  font-size: 12px;
+  font-weight: 400;
+  color: #aec1b8;
+  letter-spacing: 0;
+  display: block;
+  margin-top: 8px;
+}
+.recommendation-source {
+  color: #e8bd8b;
+  font-size: 13px;
+}
+.verified-narrative {
+  color: var(--green);
+}
+.narrative-copy {
+  white-space: pre-wrap;
+  line-height: 1.85;
+  max-width: 80ch;
+}
+.plan-steps {
+  padding-left: 20px;
+  line-height: 1.9;
+}
+.advanced-inputs {
+  margin: 22px 0;
+}
+.advanced-inputs summary,
+.calculation-details > summary {
+  color: #b8ddce;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 0;
+}
+.advanced-inputs .form-grid {
+  padding-top: 20px;
+}
+.calculation-details h3 {
+  margin-top: 28px;
+}
+.calculation-details p,
+.calculation-details li {
+  line-height: 1.8;
+}
+.calculation-details pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.calculation-list > div {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 12px 0;
+}
+.calculation-list dd {
+  margin: 0;
+}
+.what-if-controls {
+  max-width: 720px;
+}
+.temperature-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px 60px;
+  margin: 0 0 28px;
+}
+.temperature-values > span {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  color: #b6c8c0;
+}
+.temperature-values strong {
+  font-size: 30px;
+  color: #e2f6ec;
+}
+.what-if-controls input[type='range'] {
+  width: 100%;
+  accent-color: #47ddb0;
+  cursor: pointer;
+  margin: 20px 0 6px;
+  padding: 0;
+  min-height: 28px;
+}
+.what-if-controls label {
+  display: block;
+}
+.range-limits {
+  display: flex;
+  justify-content: space-between;
+  color: #93b1a3;
+}
+.what-if-comparison {
+  border-top: 1px solid var(--border);
+  margin-top: 28px;
+  padding-top: 16px;
+}
+.what-if-comparison h3 {
+  font-size: 20px;
+}
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.table-scroll table {
+  min-width: 500px;
+}
+.table-scroll th {
+  text-align: left;
+}
+.comparison-legend {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin: 22px 0 8px;
+}
+.comparison-legend span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.comparison-legend .after {
+  background: #f2b47e;
+}
+.drying-history-list {
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+  margin: 24px 0;
+}
+.drying-history-list .button {
+  width: 100%;
+  justify-content: space-between;
+  white-space: normal;
+  text-align: left;
+  flex-wrap: wrap;
+}
+.saved-plan-summary {
+  margin-bottom: 22px;
+}
+.shop-grid {
+  align-items: start;
+}
+.shop-grid .form-grid {
+  grid-template-columns: 1fr;
+}
+@media (max-width: 700px) {
+  .home-welcome {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .home-symbol {
+    display: none;
+  }
+  .home-welcome .button {
+    width: 100%;
+  }
+  .home-shortcuts {
+    grid-template-columns: 1fr;
+  }
+  .drying-key-results {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .drying-key-results > div {
+    gap: 4px;
+  }
+  .drying-key-results strong {
+    font-size: 30px;
+  }
+  .drying-key-results small {
+    display: inline;
+  }
+  .temperature-values {
+    gap: 20px;
+    justify-content: space-between;
+  }
+  .drying-flow .button {
+    white-space: normal;
+  }
+  .what-if-controls > .button {
+    width: 100%;
+  }
+  .what-if-comparison .table-scroll table {
+    min-width: 0;
+    width: 100%;
+    table-layout: fixed;
+  }
+  .what-if-comparison .table-scroll th,
+  .what-if-comparison .table-scroll td {
+    padding: 10px 6px;
+    font-size: 11px;
+    overflow-wrap: anywhere;
+  }
+  .preview-chart .chart-caption {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}

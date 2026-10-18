@@ -131,7 +131,16 @@ def simulate(
             max(sample.relative_humidity, constraints.min_relative_humidity),
             constraints.max_relative_humidity,
         )
-        step_hours = step_minutes / 60.0
+        phase_end = 0
+        for phase in phases:
+            phase_end += phase.duration_minutes
+            if phase_end > minute:
+                break
+        interval = min(step_minutes, constraints.max_duration_minutes - minute,
+                       phase_end - minute, profile.samples[-1].minute - minute)
+        if interval <= 0:
+            break
+        step_hours = interval / 60.0
         rate = rate_constant_per_hour(material, temperature_c)
         driving_force = max(0.0, current_dry_basis - equilibrium_dry_basis)
         delta_dry_basis = rate * driving_force * step_hours
@@ -170,7 +179,7 @@ def simulate(
             current_dry_basis - step_water_kg / dry_solids_kg,
         )
         previous_temperature_c = temperature_c
-        minute += step_minutes
+        minute += interval
 
         moisture_wb = moisture_lookup(batch, material, water_removed_kg)
         if (
@@ -196,6 +205,12 @@ def simulate(
             break
 
     final_moisture_wb = moisture_lookup(batch, material, water_removed_kg)
+    if minute > 0 and (not points or points[-1].minute != minute):
+        points.append(DryingPoint(
+            minute=minute, moisture_wb=final_moisture_wb,
+            temperature_c=previous_temperature_c, water_removed_kg=water_removed_kg,
+            energy_kwh=energy_kwh,
+        ))
     if heat_limited_steps:
         notes.append(
             'Heat availability limited evaporation in '

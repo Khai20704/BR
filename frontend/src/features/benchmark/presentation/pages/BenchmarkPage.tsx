@@ -35,7 +35,7 @@ const METRICS: {
     },
   },
   {
-    label: 'Energy consumed (kWh)',
+    label: 'Estimated Thermal Energy (kWh)',
     render: (data, i) =>
       formatMeasurement(data.methods[i]?.energyKwh ?? null, '', 3).trim(),
   },

@@ -1,6 +1,7 @@
 import { useScenario } from '@/core/scenario/ScenarioProvider'
+import { ThermalScenarioForm } from './ThermalScenarioForm'
 import type { ScenarioDraft } from '@/core/scenario/scenario-draft'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Activity, Thermometer, Waves } from 'lucide-react'
 import type { ThermalPreview } from '../../domain/models/ThermalPreview'
 import { usePreviewQuery } from '@/shared/hooks/usePreviewQuery'
@@ -18,26 +19,32 @@ import {
 
 export function ThermalProfilePage({
   load,
+  renderSimulation,
 }: {
   load: (draft: ScenarioDraft) => Promise<ThermalPreview>
+  renderSimulation: () => ReactNode
 }) {
   const { draft, revision } = useScenario()
   const query = usePreviewQuery('thermal', () => load(draft), revision)
   const [view, setView] = useState<'temperature' | 'heat'>('temperature')
-  const data = query.data
+  const [run, setRun] = useState(false)
+  const data = query.isFetching || query.error ? undefined : query.data
   return (
     <>
       <PageHeader
         eyebrow="THERMAL INTELLIGENCE / SOURCE"
         title="Thermal profile"
         description="Understand the shape of available heat across your operating window."
-        action={data ? <ProvenanceTag provenance={data.provenance} /> : undefined}
+        action={
+          data ? <ProvenanceTag provenance={data.provenance} /> : undefined
+        }
       />
       <RequestState
-        pending={query.isPending}
+        pending={query.isFetching}
         error={query.error}
         retry={() => void query.refetch()}
       />
+      <ThermalScenarioForm onRun={setRun} />
       <div className="stats-grid three">
         <Stat
           label="Source temperature"
@@ -64,9 +71,7 @@ export function ThermalProfilePage({
         <Stat
           label="Uncertainty"
           value="Unknown"
-          detail={
-            data ? data.uncertainty : 'No uncertainty model is available'
-          }
+          detail={data ? data.uncertainty : 'No uncertainty model is available'}
           icon={<Activity />}
         />
       </div>
@@ -111,7 +116,11 @@ export function ThermalProfilePage({
       </Panel>
       <div className="equal-columns section-gap">
         <Panel title="Data provenance">
-          {data ? <ProvenanceTag provenance={data.provenance} /> : <EmptyState />}
+          {data ? (
+            <ProvenanceTag provenance={data.provenance} />
+          ) : (
+            <EmptyState />
+          )}
           <p className="body-copy">
             {data
               ? data.provenance.detail
@@ -128,6 +137,7 @@ export function ThermalProfilePage({
           </Notice>
         </Panel>
       </div>
+      {run && <div className="section-gap">{renderSimulation()}</div>}
     </>
   )
 }

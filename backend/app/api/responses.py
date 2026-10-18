@@ -30,6 +30,9 @@ class SimulationOut(BaseModel):
     model_version: str
     notes: list[str]
     points: list[DryingPointOut]
+    target_moisture_percent_wb: float | None = None
+    target_achieved: bool | None = None
+    validation: ValidationOut | None = None
 
 
 class ValidationCheckOut(BaseModel):
